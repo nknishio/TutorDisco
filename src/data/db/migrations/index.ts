@@ -45,5 +45,6 @@ export const runMigrations = async (db: DatabaseClient): Promise<number> => {
     });
   }
 
-  return pending.length > 0 ? pending[pending.length - 1].version : current;
+  const last = pending.at(-1);
+  return last ? last.version : current;
 };

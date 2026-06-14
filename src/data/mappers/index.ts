@@ -49,13 +49,16 @@ export interface RowMapper<T> {
 }
 
 // ---------------------------------------------------------------------------
-// Scalar coercion helpers (rows are string | number | null)
+// Scalar coercion helpers
 // ---------------------------------------------------------------------------
-const asString = (v: Row[string]): string => String(v);
-const asStringOrNull = (v: Row[string]): string | null =>
-  v == null ? null : String(v);
-const asNumber = (v: Row[string]): number => Number(v);
-const asBool = (v: Row[string]): boolean => v === 1 || v === '1' || v === true;
+// With `noUncheckedIndexedAccess`, reading a row cell yields `… | undefined`, so
+// helpers accept and normalize undefined (treated as a missing/NULL cell).
+type Cell = string | number | null | undefined;
+
+const asString = (v: Cell): string => String(v);
+const asStringOrNull = (v: Cell): string | null => (v == null ? null : String(v));
+const asNumber = (v: Cell): number => Number(v);
+const asBool = (v: Cell): boolean => v === 1 || v === '1';
 const fromBool = (v: boolean): number => (v ? 1 : 0);
 
 // ---------------------------------------------------------------------------

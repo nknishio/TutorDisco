@@ -181,7 +181,7 @@ export abstract class BaseSqliteRepository<
     const placeholders = cols.map(() => '?').join(', ');
     await this.db.run(
       `INSERT INTO ${this.table} (${cols.join(', ')}) VALUES (${placeholders})`,
-      cols.map((c) => row[c]),
+      cols.map((c) => row[c] ?? null),
     );
   }
 
@@ -190,7 +190,7 @@ export abstract class BaseSqliteRepository<
     const assignments = cols.map((c) => `${c} = ?`).join(', ');
     await this.db.run(
       `UPDATE ${this.table} SET ${assignments} WHERE id = ?`,
-      [...cols.map((c) => row[c]), row.id],
+      [...cols.map((c) => row[c] ?? null), row.id ?? null],
     );
   }
 }
