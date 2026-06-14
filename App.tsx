@@ -1,13 +1,18 @@
 /**
- * App entry point.
+ * App entry point — the tutoring workflow.
  *
- * For now this mounts the design-system showcase (static placeholder data, no
- * business logic). Once the Zustand stores + DI container land, this will be
- * replaced by the real navigation root (see docs/navigation.md).
+ * AppProviders initializes the data layer (SQLite + repositories) and theme/safe-area
+ * context, then renders the navigation root. The design-system showcase remains
+ * available at src/examples/DesignSystemShowcase for reference.
  */
 import React from 'react';
-import { DesignSystemShowcase } from './src/examples/DesignSystemShowcase';
+import { AppProviders } from './src/app/providers/AppProviders';
+import { RootNavigator } from './src/app/navigation/RootNavigator';
 
 export default function App() {
-  return <DesignSystemShowcase />;
+  return (
+    <AppProviders>
+      <RootNavigator />
+    </AppProviders>
+  );
 }
