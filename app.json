@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "EasyTutor",
+    "slug": "easytutor",
+    "scheme": "easytutor",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}
