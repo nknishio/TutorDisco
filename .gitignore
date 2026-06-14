@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Expo / build
+.expo/
+dist/
+web-build/
+*.tsbuildinfo
+
+# Native
+ios/build/
+android/build/
+
+# Local SQLite databases
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Env / secrets
+.env
+.env.local
+
+# OS / editor
+.DS_Store
+*.log
