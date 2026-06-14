@@ -1,12 +1,19 @@
 /**
  * Modal — responsive: a centered dialog on tablet/desktop, a bottom sheet on phones.
  * Backdrop press and an explicit close control both dismiss. Content scrolls.
+ *
+ * The backdrop is an absolutely-positioned sibling BEHIND the panel (not a wrapper),
+ * so taps on the panel — including TextInputs — reach their target directly. Wrapping
+ * inputs in a Pressable steals the touch and blurs the field on iOS. The content
+ * ScrollView uses keyboardShouldPersistTaps="handled" so tapping a field (or another
+ * control) while the keyboard is up doesn't dismiss it.
  */
 import React, { type PropsWithChildren, type ReactNode } from 'react';
 import {
   Modal as RNModal,
   Pressable,
   ScrollView,
+  StyleSheet,
   View,
   type ViewStyle,
 } from 'react-native';
@@ -58,22 +65,24 @@ export const Modal = ({
       onRequestClose={onClose}
       testID={testID}
     >
-      {/* Backdrop */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Close"
-        onPress={onClose}
+      <View
         style={{
           flex: 1,
-          backgroundColor: theme.colors.overlay,
           justifyContent: isCompact ? 'flex-end' : 'center',
           alignItems: 'center',
           padding: isCompact ? 0 : theme.space.xl,
         }}
       >
-        {/* Panel — stop propagation so taps inside don't close */}
+        {/* Backdrop — sibling behind the panel; tap to dismiss. */}
         <Pressable
-          onPress={() => undefined}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+          onPress={onClose}
+          style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.overlay }]}
+        />
+
+        {/* Panel — plain View on top; receives input touches directly. */}
+        <View
           style={[
             {
               backgroundColor: theme.colors.surface,
@@ -110,6 +119,7 @@ export const Modal = ({
           ) : null}
 
           <ScrollView
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ padding: theme.space.xl }}
             showsVerticalScrollIndicator={false}
           >
@@ -128,8 +138,8 @@ export const Modal = ({
               {footer}
             </View>
           ) : null}
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </RNModal>
   );
 };

@@ -12,10 +12,12 @@
       "output": "single"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.easytutor"
     },
     "android": {
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.easytutor"
     },
     "plugins": [
       "expo-asset"
