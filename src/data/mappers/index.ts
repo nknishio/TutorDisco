@@ -16,9 +16,12 @@ import type {
   SyncStatus,
 } from '../../domain/types/common';
 import type { Assignment, AssignmentStatus } from '../../domain/types/assignment';
+import type { CalendarEventLink, CalendarProviderId } from '../../domain/types/calendar';
 import type { ChecklistItem } from '../../domain/types/checklist';
 import type { EmailTemplate } from '../../domain/types/emailTemplate';
 import type { Payment, PaymentStatus } from '../../domain/types/payment';
+import type { AppSettings, ThemePreference } from '../../domain/types/settings';
+import type { CurrencyCode, Timezone } from '../../domain/types/common';
 import type {
   SatScore,
   SatSkillPerformance,
@@ -32,6 +35,7 @@ import {
 } from '../../shared/utils/id';
 import type {
   AssignmentId,
+  CalendarEventLinkId,
   ChecklistItemId,
   EmailTemplateId,
   PaymentId,
@@ -209,6 +213,59 @@ export const paymentMapper: RowMapper<Payment> = {
     status: asString(row.status) as PaymentStatus,
     receivedDate: asStringOrNull(row.received_date) as IsoDate | null,
     ...syncMetaFromRow(row),
+  }),
+};
+
+// ---------------------------------------------------------------------------
+// CalendarEventLink
+// ---------------------------------------------------------------------------
+export const calendarLinkMapper: RowMapper<CalendarEventLink> = {
+  toRow: (l) => ({
+    id: l.id,
+    session_id: l.sessionId,
+    provider: l.provider,
+    external_event_id: l.externalEventId,
+    calendar_id: l.calendarId,
+    title: l.title,
+    synced_at: l.syncedAt,
+    ...syncMetaToRow(l),
+  }),
+  fromRow: (row) => ({
+    id: asId<CalendarEventLinkId>(asString(row.id)),
+    sessionId: asId<SessionId>(asString(row.session_id)),
+    provider: asString(row.provider) as CalendarProviderId,
+    externalEventId: asString(row.external_event_id),
+    calendarId: asStringOrNull(row.calendar_id),
+    title: asString(row.title),
+    syncedAt: asNumber(row.synced_at) as EpochMillis,
+    ...syncMetaFromRow(row),
+  }),
+};
+
+// ---------------------------------------------------------------------------
+// AppSettings (singleton — no sync metadata)
+// ---------------------------------------------------------------------------
+export const settingsMapper: RowMapper<AppSettings> = {
+  toRow: (s) => ({
+    id: s.id,
+    sat_mode: fromBool(s.satMode),
+    theme: s.theme,
+    default_currency: s.defaultCurrency,
+    default_rate_cents: s.defaultRateCents,
+    timezone: s.timezone,
+    created_at: s.createdAt,
+    updated_at: s.updatedAt,
+  }),
+  fromRow: (row) => ({
+    id: 'singleton',
+    satMode: asBool(row.sat_mode),
+    theme: asString(row.theme) as ThemePreference,
+    defaultCurrency: asString(row.default_currency) as CurrencyCode,
+    defaultRateCents:
+      row.default_rate_cents == null ? null : (asNumber(row.default_rate_cents) as Cents),
+    timezone: asStringOrNull(row.timezone) as Timezone | null,
+    createdAt: asNumber(row.created_at) as EpochMillis,
+    updatedAt: asNumber(row.updated_at) as EpochMillis,
   }),
 };
 

@@ -8,6 +8,7 @@
  */
 import type { DatabaseClient } from '../client';
 import { migration0001Init } from './0001_init';
+import { migration0002CalendarSettings } from './0002_calendar_settings';
 
 export interface Migration {
   /** Monotonic version. Must be unique and ordered. */
@@ -18,7 +19,10 @@ export interface Migration {
 }
 
 /** All migrations, in ascending version order. Append new ones here; never edit old. */
-export const MIGRATIONS: readonly Migration[] = [migration0001Init];
+export const MIGRATIONS: readonly Migration[] = [
+  migration0001Init,
+  migration0002CalendarSettings,
+];
 
 const getUserVersion = async (db: DatabaseClient): Promise<number> => {
   const row = await db.getFirst<{ user_version: number }>('PRAGMA user_version;');

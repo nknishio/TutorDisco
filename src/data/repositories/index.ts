@@ -6,23 +6,30 @@
  */
 import type {
   AssignmentId,
+  CalendarEventLinkId,
   ChecklistItemId,
+  CurrencyCode,
   EmailTemplateId,
   PaymentId,
+  Result,
+  Row,
   SatScoreId,
   SatSkillPerformanceId,
   SessionId,
   StudentId,
 } from '../../domain/types/common';
 import type { Assignment } from '../../domain/types/assignment';
+import type { CalendarEventLink } from '../../domain/types/calendar';
 import type { ChecklistItem } from '../../domain/types/checklist';
 import type { EmailTemplate } from '../../domain/types/emailTemplate';
 import type { Payment } from '../../domain/types/payment';
 import type { SatScore, SatSkillPerformance } from '../../domain/types/sat';
 import type { Session } from '../../domain/types/session';
+import type { AppSettings, SettingsPatch } from '../../domain/types/settings';
 import type { Student, StudentStatus } from '../../domain/types/student';
 import type {
   AssignmentRepository,
+  CalendarEventLinkRepository,
   ChecklistItemRepository,
   EmailTemplateRepository,
   ListOptions,
@@ -31,10 +38,12 @@ import type {
   SatScoreRepository,
   SatSkillPerformanceRepository,
   SessionRepository,
+  SettingsRepository,
   StudentRepository,
 } from '../../domain/repositories';
 import {
   validateAssignment,
+  validateCalendarLink,
   validateChecklistItem,
   validateEmailTemplate,
   validatePayment,
@@ -43,15 +52,19 @@ import {
   validateSession,
   validateStudent,
 } from '../../shared/validation';
+import { err, ok } from '../../shared/utils/result';
+import { nowMillis } from '../../shared/utils/time';
 import type { DatabaseClient } from '../db/client';
 import {
   assignmentMapper,
+  calendarLinkMapper,
   checklistItemMapper,
   emailTemplateMapper,
   paymentMapper,
   satScoreMapper,
   satSkillPerformanceMapper,
   sessionMapper,
+  settingsMapper,
   studentMapper,
 } from '../mappers';
 import { BaseSqliteRepository } from './BaseSqliteRepository';
@@ -162,6 +175,75 @@ class SqlitePaymentRepository
   }
 }
 
+class SqliteCalendarLinkRepository
+  extends BaseSqliteRepository<CalendarEventLink, CalendarEventLinkId>
+  implements CalendarEventLinkRepository
+{
+  constructor(db: DatabaseClient) {
+    super(db, 'calendar_links', calendarLinkMapper, validateCalendarLink);
+  }
+
+  listBySession(sessionId: SessionId, opts: ListOptions = {}): Promise<readonly CalendarEventLink[]> {
+    return this.query(
+      `SELECT * FROM calendar_links WHERE session_id = ? AND deleted_at IS NULL ORDER BY synced_at DESC${this.pagination(opts)}`,
+      [sessionId],
+    );
+  }
+
+  async getActiveForSession(sessionId: SessionId): Promise<CalendarEventLink | null> {
+    const rows = await this.listBySession(sessionId, { limit: 1 });
+    return rows[0] ?? null;
+  }
+}
+
+/** Singleton settings row. Bespoke (no generic CRUD, no sync metadata). */
+const SETTINGS_ID = 'singleton';
+
+class SqliteSettingsRepository implements SettingsRepository {
+  constructor(private readonly db: DatabaseClient) {}
+
+  async get(): Promise<AppSettings> {
+    const row = await this.db.getFirst<Row>(`SELECT * FROM settings WHERE id = ?`, [SETTINGS_ID]);
+    if (row) return settingsMapper.fromRow(row);
+
+    // First access — materialize defaults so callers always get a row back.
+    const now = nowMillis();
+    const defaults: AppSettings = {
+      id: 'singleton',
+      satMode: false,
+      theme: 'system',
+      defaultCurrency: 'USD' as CurrencyCode,
+      defaultRateCents: null,
+      timezone: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const insertRow = settingsMapper.toRow(defaults);
+    const cols = Object.keys(insertRow);
+    await this.db.run(
+      `INSERT INTO settings (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`,
+      cols.map((c) => insertRow[c] ?? null),
+    );
+    return defaults;
+  }
+
+  async update(patch: SettingsPatch): Promise<Result<AppSettings>> {
+    try {
+      const current = await this.get();
+      const next: AppSettings = { ...current, ...patch, id: 'singleton', updatedAt: nowMillis() };
+      const row = settingsMapper.toRow(next);
+      const cols = Object.keys(row).filter((c) => c !== 'id');
+      await this.db.run(
+        `UPDATE settings SET ${cols.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`,
+        [...cols.map((c) => row[c] ?? null), SETTINGS_ID],
+      );
+      return ok(next);
+    } catch (e) {
+      return err('db', 'Failed to update settings', e);
+    }
+  }
+}
+
 class SqliteEmailTemplateRepository
   extends BaseSqliteRepository<EmailTemplate, EmailTemplateId>
   implements EmailTemplateRepository
@@ -221,6 +303,8 @@ export const createRepositories = (db: DatabaseClient): Repositories => ({
   assignments: new SqliteAssignmentRepository(db),
   checklistItems: new SqliteChecklistItemRepository(db),
   payments: new SqlitePaymentRepository(db),
+  calendarLinks: new SqliteCalendarLinkRepository(db),
+  settings: new SqliteSettingsRepository(db),
   emailTemplates: new SqliteEmailTemplateRepository(db),
   satScores: new SqliteSatScoreRepository(db),
   satSkillPerformance: new SqliteSatSkillPerformanceRepository(db),

@@ -13,6 +13,8 @@
 import type { CreateInput } from '../../domain/types/common';
 import type { Assignment } from '../../domain/types/assignment';
 import { ASSIGNMENT_STATUSES } from '../../domain/types/assignment';
+import type { CalendarEventLink } from '../../domain/types/calendar';
+import { CALENDAR_PROVIDER_IDS } from '../../domain/types/calendar';
 import type { ChecklistItem } from '../../domain/types/checklist';
 import type { EmailTemplate } from '../../domain/types/emailTemplate';
 import type { Payment } from '../../domain/types/payment';
@@ -208,6 +210,21 @@ export const validatePayment = (
   // A paid payment must have a received date.
   if (input.status === 'paid' && input.receivedDate == null) {
     c.errors.push({ field: 'receivedDate', message: 'receivedDate is required when status is paid' });
+  }
+  return finish(c, input);
+};
+
+export const validateCalendarLink = (
+  input: CreateInput<CalendarEventLink>,
+): ValidationResult<CreateInput<CalendarEventLink>> => {
+  const c = new Checker();
+  c.requiredId('sessionId', input.sessionId);
+  c.oneOf('provider', input.provider, CALENDAR_PROVIDER_IDS);
+  c.requiredString('externalEventId', input.externalEventId, 500);
+  c.optionalString('calendarId', input.calendarId, 500);
+  c.requiredString('title', input.title, 500);
+  if (typeof input.syncedAt !== 'number' || !Number.isFinite(input.syncedAt)) {
+    c.errors.push({ field: 'syncedAt', message: 'syncedAt must be a timestamp' });
   }
   return finish(c, input);
 };
