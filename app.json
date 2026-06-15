@@ -13,14 +13,25 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.easytutor"
+      "bundleIdentifier": "com.anonymous.easytutor",
+      "infoPlist": {
+        "NSCalendarsUsageDescription": "EasyTutor adds and updates tutoring sessions in your calendar.",
+        "NSCalendarsFullAccessUsageDescription": "EasyTutor adds and updates tutoring sessions in your calendar."
+      }
     },
     "android": {
       "edgeToEdgeEnabled": true,
       "package": "com.anonymous.easytutor"
     },
     "plugins": [
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "EasyTutor adds and updates tutoring sessions in your calendar."
+        }
+      ],
+      "expo-sharing"
     ]
   }
 }
