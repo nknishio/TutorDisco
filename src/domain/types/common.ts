@@ -47,6 +47,7 @@ export type SessionId = Brand<Uuid, 'SessionId'>;
 export type AssignmentId = Brand<Uuid, 'AssignmentId'>;
 export type ChecklistItemId = Brand<Uuid, 'ChecklistItemId'>;
 export type PaymentId = Brand<Uuid, 'PaymentId'>;
+export type CalendarEventLinkId = Brand<Uuid, 'CalendarEventLinkId'>;
 export type EmailTemplateId = Brand<Uuid, 'EmailTemplateId'>;
 export type SatScoreId = Brand<Uuid, 'SatScoreId'>;
 export type SatSkillPerformanceId = Brand<Uuid, 'SatSkillPerformanceId'>;

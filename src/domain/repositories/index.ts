@@ -13,13 +13,16 @@ import type {
   Uuid,
 } from '../types/common';
 import type { Assignment } from '../types/assignment';
+import type { CalendarEventLink } from '../types/calendar';
 import type { ChecklistItem } from '../types/checklist';
 import type { EmailTemplate } from '../types/emailTemplate';
 import type { Payment } from '../types/payment';
 import type { SatScore, SatSkillPerformance } from '../types/sat';
 import type { Session } from '../types/session';
+import type { AppSettings, SettingsPatch } from '../types/settings';
 import type { Student, StudentStatus } from '../types/student';
 import type {
+  CalendarEventLinkId,
   SatScoreId,
   SatSkillPerformanceId,
   SessionId,
@@ -86,6 +89,23 @@ export interface PaymentRepository
   listBySession(sessionId: SessionId, opts?: ListOptions): Promise<readonly Payment[]>;
 }
 
+export interface CalendarEventLinkRepository
+  extends Repository<CalendarEventLink, CalendarEventLinkId> {
+  listBySession(sessionId: SessionId, opts?: ListOptions): Promise<readonly CalendarEventLink[]>;
+  /** Most recently synced, non-deleted link for a session, if any. */
+  getActiveForSession(sessionId: SessionId): Promise<CalendarEventLink | null>;
+}
+
+/**
+ * AppSettings is a single row, not a collection, so it gets a bespoke contract
+ * rather than the generic CRUD surface.
+ */
+export interface SettingsRepository {
+  /** Read the singleton settings, creating defaults on first access. */
+  get(): Promise<AppSettings>;
+  update(patch: SettingsPatch): Promise<Result<AppSettings>>;
+}
+
 export interface EmailTemplateRepository
   extends Repository<EmailTemplate, import('../types/common').EmailTemplateId> {}
 
@@ -113,6 +133,8 @@ export interface Repositories {
   readonly assignments: AssignmentRepository;
   readonly checklistItems: ChecklistItemRepository;
   readonly payments: PaymentRepository;
+  readonly calendarLinks: CalendarEventLinkRepository;
+  readonly settings: SettingsRepository;
   readonly emailTemplates: EmailTemplateRepository;
   readonly satScores: SatScoreRepository;
   readonly satSkillPerformance: SatSkillPerformanceRepository;

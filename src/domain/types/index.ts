@@ -12,5 +12,6 @@ export * from './session';
 export * from './assignment';
 export * from './checklist';
 export * from './payment';
+export * from './calendar';
 export * from './emailTemplate';
 export * from './sat';
