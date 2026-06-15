@@ -17,10 +17,14 @@ interface SessionsState {
   byId: Record<string, Session>;
   byStudent: Record<string, string[]>;
   loadingStudentId: string | null;
+  allLoaded: boolean;
 
   loadByStudent: (studentId: StudentId) => Promise<void>;
+  /** Load every session (used by cross-student views like payments/revenue). */
+  loadAll: () => Promise<void>;
   getById: (id: SessionId) => Session | undefined;
   forStudent: (studentId: StudentId) => Session[];
+  all: () => Session[];
 
   create: (input: CreateInput<Session>) => Promise<Result<Session>>;
   update: (patch: UpdateInput<Session>) => Promise<Result<Session>>;
@@ -43,6 +47,7 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
   byId: {},
   byStudent: {},
   loadingStudentId: null,
+  allLoaded: false,
 
   loadByStudent: async (studentId) => {
     set({ loadingStudentId: studentId });
@@ -61,12 +66,27 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
     }
   },
 
+  loadAll: async () => {
+    const sessions = await getRepositories().sessions.list();
+    set(() => {
+      const byId: Record<string, Session> = {};
+      const byStudent: Record<string, string[]> = {};
+      for (const sess of sessions) {
+        byId[sess.id] = sess;
+        (byStudent[sess.studentId] ??= []).push(sess.id);
+      }
+      return { byId, byStudent, allLoaded: true };
+    });
+  },
+
   getById: (id) => get().byId[id],
 
   forStudent: (studentId) => {
     const s = get();
     return (s.byStudent[studentId] ?? []).map((id) => s.byId[id]).filter(Boolean) as Session[];
   },
+
+  all: () => Object.values(get().byId),
 
   create: async (input) => {
     const res = await getRepositories().sessions.create(input);

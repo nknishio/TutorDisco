@@ -39,3 +39,30 @@ export const todayIsoDate = (): IsoDate => {
   const d = String(now.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}` as IsoDate;
 };
+
+/** '2026-06' → 'Jun'. Short month label for charts. */
+export const formatMonthShort = (monthKey: string): string => {
+  const m = Number(monthKey.split('-')[1]);
+  return m >= 1 && m <= 12 ? (MONTHS[m - 1] as string) : monthKey;
+};
+
+/** '2026-06' → 'Jun 2026'. */
+export const formatMonthLong = (monthKey: string): string => {
+  const [y, m] = monthKey.split('-').map(Number);
+  return m && m >= 1 && m <= 12 ? `${MONTHS[m - 1]} ${y}` : monthKey;
+};
+
+/** Current month as 'YYYY-MM' (local wall-clock). */
+export const currentMonthKey = (): string => todayIsoDate().slice(0, 7);
+
+/** The last `count` month keys ('YYYY-MM') ending at the current month, ascending. */
+export const recentMonthKeys = (count: number): string[] => {
+  const now = new Date();
+  const keys: string[] = [];
+  for (let i = count - 1; i >= 0; i -= 1) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    keys.push(`${d.getFullYear()}-${m}`);
+  }
+  return keys;
+};
