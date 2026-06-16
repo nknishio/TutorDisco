@@ -24,6 +24,7 @@ import { useAssignmentsStore, useChecklistStore, useSessionsStore } from '../../
 import type { RootStackParamList } from '../../../app/navigation/types';
 import { SessionFormModal } from '../components/SessionFormModal';
 import { AssignmentFormModal } from '../../assignments/components/AssignmentFormModal';
+import { GenerateEmailModal } from '../../templates/components/GenerateEmailModal';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SessionDetail'>;
 
@@ -56,6 +57,7 @@ export const SessionDetailScreen = ({ route }: Props) => {
   const removeChecklist = useChecklistStore((s) => s.remove);
 
   const [editOpen, setEditOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
   const [assignmentModal, setAssignmentModal] = useState<{ open: boolean; assignment?: Assignment }>({ open: false });
   const [newItem, setNewItem] = useState('');
 
@@ -102,7 +104,12 @@ export const SessionDetailScreen = ({ route }: Props) => {
         {/* Session info */}
         <Card
           title={session.title}
-          headerAction={<Button label="Edit" variant="secondary" size="sm" onPress={() => setEditOpen(true)} />}
+          headerAction={
+            <HStack gap={theme.space.sm}>
+              <Button label="Email" variant="ghost" size="sm" onPress={() => setEmailOpen(true)} />
+              <Button label="Edit" variant="secondary" size="sm" onPress={() => setEditOpen(true)} />
+            </HStack>
+          }
         >
           <VStack gap={theme.space.md}>
             <HStack><Badge label={session.status === 'no_show' ? 'No show' : session.status} tone={statusTone} /></HStack>
@@ -207,6 +214,7 @@ export const SessionDetailScreen = ({ route }: Props) => {
       </VStack>
 
       <SessionFormModal visible={editOpen} onClose={() => setEditOpen(false)} studentId={studentId} session={session} />
+      <GenerateEmailModal visible={emailOpen} onClose={() => setEmailOpen(false)} session={session} studentId={studentId} />
       <AssignmentFormModal
         visible={assignmentModal.open}
         onClose={() => setAssignmentModal({ open: false })}
