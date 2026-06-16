@@ -45,6 +45,7 @@ export const StudentFormModal = ({ visible, onClose, student }: StudentFormModal
 
   const [name, setName] = useState(student?.name ?? '');
   const [email, setEmail] = useState(student?.email ?? '');
+  const [parentName, setParentName] = useState(student?.parentName ?? '');
   const [parentEmail, setParentEmail] = useState(student?.parentEmail ?? '');
   const [grade, setGrade] = useState<GradeLevel | null>(student?.gradeLevel ?? null);
   const [school, setSchool] = useState(student?.school ?? '');
@@ -80,6 +81,7 @@ export const StudentFormModal = ({ visible, onClose, student }: StudentFormModal
     const fields: CreateInput<Student> = {
       name: name.trim(),
       email: email.trim() || null,
+      parentName: parentName.trim() || null,
       parentEmail: parentEmail.trim() || null,
       gradeLevel: grade,
       school: school.trim() || null,
@@ -118,6 +120,7 @@ export const StudentFormModal = ({ visible, onClose, student }: StudentFormModal
         {formError ? <Text color="danger">{formError}</Text> : null}
         <TextField label="Full name" required value={name} onChangeText={setName} placeholder="e.g. Ava Chen" />
         <TextField label="Email" value={email} onChangeText={setEmail} placeholder="student@example.com" keyboardType="email-address" autoCapitalize="none" />
+        <TextField label="Parent name" value={parentName} onChangeText={setParentName} placeholder="e.g. Mr. Chen" />
         <TextField label="Parent email" value={parentEmail} onChangeText={setParentEmail} keyboardType="email-address" autoCapitalize="none" />
         <Select label="Grade level" value={grade} options={gradeOptions} onChange={setGrade} placeholder="Select a grade" />
         <TextField label="School" value={school} onChangeText={setSchool} />

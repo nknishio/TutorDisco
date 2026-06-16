@@ -35,6 +35,7 @@ export const GRADE_LEVELS: readonly GradeLevel[] = [
 export interface Student extends Entity<StudentId> {
   readonly name: string;
   readonly email: string | null;
+  readonly parentName: string | null;
   readonly parentEmail: string | null;
   readonly gradeLevel: GradeLevel | null;
   readonly school: string | null;

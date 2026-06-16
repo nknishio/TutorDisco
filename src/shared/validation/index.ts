@@ -150,6 +150,7 @@ export const validateStudent = (
   const c = new Checker();
   c.requiredString('name', input.name, 120);
   c.email('email', input.email, { required: false });
+  c.optionalString('parentName', input.parentName, 120);
   c.email('parentEmail', input.parentEmail, { required: false });
   c.optionalOneOf('gradeLevel', input.gradeLevel, GRADE_LEVELS);
   c.optionalString('school', input.school, 200);
