@@ -30,6 +30,8 @@ export interface TextFieldProps
       | 'testID'
       | 'onBlur'
       | 'onFocus'
+      | 'onSelectionChange'
+      | 'selection'
     > {
   /** Render as a multi-line textarea. */
   multiline?: boolean;
