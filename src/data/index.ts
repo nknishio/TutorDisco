@@ -9,6 +9,7 @@ import type { Repositories } from '../domain/repositories';
 import { DatabaseClient, ExpoSqliteClient } from './db/client';
 import { runMigrations } from './db/migrations';
 import { createRepositories } from './repositories';
+import { seedDefaultTemplates } from './seed';
 
 export interface DataLayer {
   readonly db: DatabaseClient;
@@ -25,6 +26,7 @@ export const initDataLayer = async (
 ): Promise<DataLayer> => {
   const db = await ExpoSqliteClient.open(databaseName);
   const schemaVersion = await runMigrations(db);
+  await seedDefaultTemplates(db);
   const repositories = createRepositories(db);
   return { db, repositories, schemaVersion };
 };
