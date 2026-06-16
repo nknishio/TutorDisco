@@ -1,11 +1,11 @@
 /**
  * SessionFormModal — create or edit a session.
  *
- * Scheduling is fully visual: a month-view calendar for the date (no typing), a time
- * picker for the start, a duration selector, and an optional location. Expected payment
- * is computed live. A calendar section adds/updates/removes the matching event through
- * the active CalendarProvider; the event title follows SAT Mode ("{Name} SAT Tutor" vs
- * "{Name} Tutoring"). Calendar failures never block saving the session.
+ * Scheduling uses a month-view calendar for the date (no typing) plus typable start
+ * time and duration fields and an optional location. A calendar section adds/updates/
+ * removes the matching event through the active CalendarProvider; the event title
+ * follows SAT Mode ("{Name} SAT Tutor" vs "{Name} Tutoring"). Calendar failures never
+ * block saving the session.
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
@@ -18,7 +18,6 @@ import {
   Select,
   Switch,
   TextField,
-  TimePicker,
   Text,
   VStack,
 } from '../../../shared/ui';
@@ -32,10 +31,9 @@ import type {
   StudentId,
 } from '../../../domain/types';
 import { SESSION_STATUSES } from '../../../domain/types';
-import { expectedPaymentCents } from '../../../domain/services/earnings';
 import { buildEventTitle } from '../../../domain/services/calendar';
 import { isIsoDate, isIsoTime } from '../../../shared/utils/time';
-import { parseDollarsToCents, formatCents } from '../../../shared/utils/money';
+import { parseDollarsToCents } from '../../../shared/utils/money';
 import { formatIsoDate, formatIsoTime, todayIsoDate } from '../../../shared/utils/datetime';
 import {
   CALENDAR_PROVIDER_OPTIONS,
@@ -60,8 +58,6 @@ const statusOptions = SESSION_STATUSES.map((s) => ({
   label: s === 'no_show' ? 'No show' : s.charAt(0).toUpperCase() + s.slice(1),
   value: s,
 }));
-
-const DURATION_PRESETS = [30, 45, 60, 90, 120];
 
 export const SessionFormModal = ({
   visible,
@@ -95,7 +91,7 @@ export const SessionFormModal = ({
   const [title, setTitle] = useState('');
   const [date, setDate] = useState<string>(session?.date ?? todayIsoDate());
   const [startTime, setStartTime] = useState<string>(session?.startTime ?? '15:00');
-  const [duration, setDuration] = useState(session?.duration ?? defaultDuration);
+  const [duration, setDuration] = useState(String(session?.duration ?? defaultDuration));
   const [rate, setRate] = useState(
     session
       ? (session.hourlyRate / 100).toFixed(2)
@@ -125,16 +121,7 @@ export const SessionFormModal = ({
   }, [visible, session, loadSettings, loadLink]);
 
   const rateCents = useMemo(() => parseDollarsToCents(rate || '0'), [rate]);
-
-  const expected = useMemo(() => {
-    if (rateCents == null || duration <= 0) return null;
-    return expectedPaymentCents(rateCents, duration);
-  }, [rateCents, duration]);
-
-  const durationOptions = useMemo(() => {
-    const values = DURATION_PRESETS.includes(duration) ? DURATION_PRESETS : [...DURATION_PRESETS, duration].sort((a, b) => a - b);
-    return values.map((m) => ({ label: m % 60 === 0 ? `${m / 60} hr` : `${m} min`, value: m }));
-  }, [duration]);
+  const durationNum = Math.round(Number(duration));
 
   const providerOptions = CALENDAR_PROVIDER_OPTIONS.map((p) => ({ label: p.label, value: p.id }));
   const eventTitle = buildEventTitle(studentName, satMode);
@@ -145,7 +132,7 @@ export const SessionFormModal = ({
     title: title.trim() || eventTitle,
     date: date as IsoDate,
     startTime: startTime as IsoTime,
-    duration,
+    duration: durationNum,
     hourlyRate: rateCents as Cents,
     location: location.trim() || null,
     status,
@@ -155,8 +142,8 @@ export const SessionFormModal = ({
   const onSubmit = async () => {
     setFormError(null);
     if (!isIsoDate(date)) return setFormError('Pick a valid date.');
-    if (!isIsoTime(startTime)) return setFormError('Pick a valid start time.');
-    if (duration <= 0) return setFormError('Choose a duration.');
+    if (!isIsoTime(startTime)) return setFormError('Enter a start time as HH:mm (24h).');
+    if (!Number.isFinite(durationNum) || durationNum <= 0) return setFormError('Enter a valid duration.');
     if (rateCents == null) return setFormError('Enter a valid hourly rate.');
 
     const fields = buildFields();
@@ -227,13 +214,25 @@ export const SessionFormModal = ({
           </View>
         </VStack>
 
-        {/* Time + duration */}
-        <HStack gap={theme.space.lg} align="flex-start">
+        {/* Time + duration (typable) */}
+        <HStack gap={theme.space.lg}>
           <VStack flex={1}>
-            <TimePicker label="Start time" value={startTime} onChange={setStartTime} />
+            <TextField
+              label="Start time"
+              value={startTime}
+              onChangeText={setStartTime}
+              placeholder="HH:mm"
+              autoCapitalize="none"
+            />
           </VStack>
           <VStack flex={1}>
-            <Select label="Duration" value={duration} options={durationOptions} onChange={setDuration} />
+            <TextField
+              label="Duration (min)"
+              value={duration}
+              onChangeText={setDuration}
+              keyboardType="number-pad"
+              placeholder="60"
+            />
           </VStack>
         </HStack>
 
@@ -248,16 +247,6 @@ export const SessionFormModal = ({
 
         {isEdit ? <Select label="Status" value={status} options={statusOptions} onChange={setStatus} /> : null}
         <TextField label="Notes" value={notes} onChangeText={setNotes} multiline numberOfLines={3} />
-
-        {/* Expected payment — computed live */}
-        <HStack
-          justify="space-between"
-          align="center"
-          style={{ backgroundColor: theme.colors.surfaceMuted, borderRadius: theme.radii.md, padding: theme.space.lg }}
-        >
-          <Text variant="label" color="textMuted">Expected payment</Text>
-          <Text variant="h3">{expected != null ? formatCents(expected) : '—'}</Text>
-        </HStack>
 
         {/* Calendar section */}
         <VStack
