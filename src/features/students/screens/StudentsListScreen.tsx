@@ -90,6 +90,7 @@ export const StudentsListScreen = ({ navigation }: Props) => {
               size="sm"
               onPress={() => setShowArchived((v) => !v)}
             />
+            <Button label="Templates" variant="ghost" size="sm" onPress={() => navigation.navigate('Templates')} />
             <Button label="Revenue" variant="ghost" size="sm" onPress={() => navigation.navigate('RevenueDashboard')} />
             <Button label="Payments" variant="secondary" size="sm" onPress={() => navigation.navigate('Payments')} />
             <Button label="Add student" variant="primary" size="sm" onPress={() => setAddOpen(true)} />

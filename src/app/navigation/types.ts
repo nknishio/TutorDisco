@@ -13,6 +13,7 @@ export type RootStackParamList = {
   SessionDetail: { sessionId: SessionId; studentId: StudentId };
   Payments: undefined;
   RevenueDashboard: undefined;
+  Templates: undefined;
 };
 
 declare global {
