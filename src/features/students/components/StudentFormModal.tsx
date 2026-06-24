@@ -16,6 +16,7 @@ import {
 import type { Cents, CreateInput, GradeLevel, Student, StudentStatus } from '../../../domain/types';
 import { GRADE_LEVELS, STUDENT_STATUSES } from '../../../domain/types';
 import { parseDollarsToCents } from '../../../shared/utils/money';
+import { useFormSubmit } from '../../../shared/hooks';
 import { useStudentsStore } from '../../../store';
 
 export interface StudentFormModalProps {
@@ -56,14 +57,13 @@ export const StudentFormModal = ({ visible, onClose, student }: StudentFormModal
   );
   const [notes, setNotes] = useState(student?.notes ?? '');
 
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const { submitting, error: formError, setError: setFormError, submit } = useFormSubmit();
 
   const rateCents = useMemo(() => parseDollarsToCents(rate || '0'), [rate]);
   const durationNum = Number(duration);
   const nameInvalid = name.trim().length === 0;
 
-  const onSubmit = async () => {
+  const onSubmit = () => {
     setFormError(null);
     if (nameInvalid) {
       setFormError('Name is required.');
@@ -91,17 +91,10 @@ export const StudentFormModal = ({ visible, onClose, student }: StudentFormModal
       defaultHourlyRate: rateCents as Cents,
     };
 
-    setSubmitting(true);
-    const res = student
-      ? await update({ id: student.id, ...fields })
-      : await create(fields);
-    setSubmitting(false);
-
-    if (res.ok) {
-      onClose();
-    } else {
-      setFormError(res.error.message);
-    }
+    void submit(
+      () => (student ? update({ id: student.id, ...fields }) : create(fields)),
+      onClose,
+    );
   };
 
   return (

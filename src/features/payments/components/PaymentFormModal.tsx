@@ -21,6 +21,7 @@ import { sessionPaymentCents } from '../../../domain/services/earnings';
 import { formatCents, parseDollarsToCents } from '../../../shared/utils/money';
 import { formatIsoDate, todayIsoDate } from '../../../shared/utils/datetime';
 import { isIsoDate } from '../../../shared/utils/time';
+import { useFormSubmit } from '../../../shared/hooks';
 import { usePaymentsStore, useSessionsStore, useStudentsStore } from '../../../store';
 
 export interface PaymentFormModalProps {
@@ -57,8 +58,7 @@ export const PaymentFormModal = ({ visible, onClose, payment, studentId }: Payme
   const [status, setStatus] = useState<PaymentStatus>(payment?.status ?? 'pending');
   const [receivedDate, setReceivedDate] = useState<string>(payment?.receivedDate ?? todayIsoDate());
 
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const { submitting, error: formError, setError: setFormError, submit } = useFormSubmit();
 
   const studentOptions = useMemo(
     () => [
@@ -95,7 +95,7 @@ export const PaymentFormModal = ({ visible, onClose, payment, studentId }: Payme
     setSession(NONE); // sessions are per student; reset on student change
   };
 
-  const onSubmit = async () => {
+  const onSubmit = () => {
     setFormError(null);
     if (!student) return setFormError('Choose a student.');
     const cents = parseDollarsToCents(amount || '0');
@@ -112,12 +112,10 @@ export const PaymentFormModal = ({ visible, onClose, payment, studentId }: Payme
       receivedDate: status === 'paid' ? (receivedDate as IsoDate) : null,
     };
 
-    setSubmitting(true);
-    const res = payment ? await update({ id: payment.id, ...fields }) : await create(fields);
-    setSubmitting(false);
-
-    if (res.ok) onClose();
-    else setFormError(res.error.message);
+    void submit(
+      () => (payment ? update({ id: payment.id, ...fields }) : create(fields)),
+      onClose,
+    );
   };
 
   return (

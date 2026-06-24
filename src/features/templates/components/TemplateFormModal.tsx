@@ -18,6 +18,7 @@ import {
   SAMPLE_VALUES,
   TEMPLATE_VARIABLES,
 } from '../../../domain/services/templates';
+import { useFormSubmit } from '../../../shared/hooks';
 import { useTemplatesStore } from '../../../store';
 
 export interface TemplateFormModalProps {
@@ -35,8 +36,7 @@ export const TemplateFormModal = ({ visible, onClose, template }: TemplateFormMo
 
   const [title, setTitle] = useState(template?.title ?? '');
   const [content, setContent] = useState(template?.content ?? '');
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const { submitting, error: formError, setError: setFormError, submit } = useFormSubmit();
 
   // Track the body's cursor/selection so variables insert where the caret is.
   const initialLen = (template?.content ?? '').length;
@@ -74,18 +74,16 @@ export const TemplateFormModal = ({ visible, onClose, template }: TemplateFormMo
     setPendingSelection({ start: caret, end: caret });
   };
 
-  const onSubmit = async () => {
+  const onSubmit = () => {
     setFormError(null);
     if (title.trim().length === 0) return setFormError('Title is required.');
     if (content.trim().length === 0) return setFormError('Template body is required.');
 
     const fields: CreateInput<EmailTemplate> = { title: title.trim(), content };
-    setSubmitting(true);
-    const res = template ? await update({ id: template.id, ...fields }) : await create(fields);
-    setSubmitting(false);
-
-    if (res.ok) onClose();
-    else setFormError(res.error.message);
+    void submit(
+      () => (template ? update({ id: template.id, ...fields }) : create(fields)),
+      onClose,
+    );
   };
 
   return (

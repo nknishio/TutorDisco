@@ -13,6 +13,7 @@ import type {
 } from '../../../domain/types';
 import { ASSIGNMENT_STATUSES } from '../../../domain/types';
 import { isIsoDate } from '../../../shared/utils/time';
+import { useFormSubmit } from '../../../shared/hooks';
 import { useAssignmentsStore } from '../../../store';
 
 export interface AssignmentFormModalProps {
@@ -37,10 +38,9 @@ export const AssignmentFormModal = ({ visible, onClose, sessionId, assignment }:
   const [details, setDetails] = useState(assignment?.details ?? '');
   const [dueDate, setDueDate] = useState(assignment?.dueDate ?? '');
   const [status, setStatus] = useState<AssignmentStatus>(assignment?.status ?? 'pending');
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const { submitting, error: formError, setError: setFormError, submit } = useFormSubmit();
 
-  const onSubmit = async () => {
+  const onSubmit = () => {
     setFormError(null);
     if (title.trim().length === 0) return setFormError('Title is required.');
     if (dueDate.trim() !== '' && !isIsoDate(dueDate.trim())) {
@@ -55,12 +55,10 @@ export const AssignmentFormModal = ({ visible, onClose, sessionId, assignment }:
       status,
     };
 
-    setSubmitting(true);
-    const res = assignment ? await update({ id: assignment.id, ...fields }) : await create(fields);
-    setSubmitting(false);
-
-    if (res.ok) onClose();
-    else setFormError(res.error.message);
+    void submit(
+      () => (assignment ? update({ id: assignment.id, ...fields }) : create(fields)),
+      onClose,
+    );
   };
 
   return (
