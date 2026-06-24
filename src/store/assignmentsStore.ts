@@ -17,6 +17,8 @@ interface AssignmentsState {
   bySession: Record<string, string[]>;
 
   loadBySession: (sessionId: SessionId) => Promise<void>;
+  /** Load assignments for many sessions in one batch (one state update). */
+  loadForSessions: (sessionIds: readonly SessionId[]) => Promise<void>;
   forSession: (sessionId: SessionId) => Assignment[];
   create: (input: CreateInput<Assignment>) => Promise<Result<Assignment>>;
   update: (patch: UpdateInput<Assignment>) => Promise<Result<Assignment>>;
@@ -45,6 +47,23 @@ export const useAssignmentsStore = create<AssignmentsState>((set, get) => ({
       const byId = { ...s.byId };
       for (const a of items) byId[a.id] = a;
       return { byId, bySession: { ...s.bySession, [sessionId]: items.map((a) => a.id) } };
+    });
+  },
+
+  loadForSessions: async (sessionIds) => {
+    if (sessionIds.length === 0) return;
+    const repo = getRepositories().assignments;
+    const loaded = await Promise.all(
+      sessionIds.map(async (id) => [id, await repo.listBySession(id)] as const),
+    );
+    set((s) => {
+      const byId = { ...s.byId };
+      const bySession = { ...s.bySession };
+      for (const [sessionId, items] of loaded) {
+        for (const a of items) byId[a.id] = a;
+        bySession[sessionId] = items.map((a) => a.id);
+      }
+      return { byId, bySession };
     });
   },
 
