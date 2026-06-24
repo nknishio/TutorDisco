@@ -35,6 +35,7 @@ import { buildEventTitle } from '../../../domain/services/calendar';
 import { isIsoDate, isIsoTime } from '../../../shared/utils/time';
 import { parseDollarsToCents } from '../../../shared/utils/money';
 import { formatIsoDate, formatIsoTime, todayIsoDate } from '../../../shared/utils/datetime';
+import { useFormSubmit } from '../../../shared/hooks';
 import {
   CALENDAR_PROVIDER_OPTIONS,
   useCalendarStore,
@@ -104,8 +105,7 @@ export const SessionFormModal = ({
   const [status, setStatus] = useState<SessionStatus>(session?.status ?? 'scheduled');
   const [addToCalendarOnSave, setAddToCalendarOnSave] = useState(!isEdit);
 
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const { submitting, error: formError, setError: setFormError, submit } = useFormSubmit();
 
   // Default the session title to the SAT-aware convention for new sessions.
   useEffect(() => {
@@ -113,6 +113,30 @@ export const SessionFormModal = ({
     // Only when the form is (re)opened for a given session/student.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, studentName, visible]);
+
+  // Re-sync the form whenever it (re)opens or the target session / student defaults
+  // change. useState initializers only run on first mount, but this modal stays mounted
+  // and is just toggled visible — so without this, edits to the student's default rate or
+  // duration never reach the "Add session" form (it would keep the stale mount-time value).
+  useEffect(() => {
+    if (!visible) return;
+    setDate(session?.date ?? todayIsoDate());
+    setStartTime(session?.startTime ?? '15:00');
+    setDuration(String(session?.duration ?? defaultDuration));
+    setRate(
+      session
+        ? (session.hourlyRate / 100).toFixed(2)
+        : defaultRateCents != null
+          ? (defaultRateCents / 100).toFixed(2)
+          : '',
+    );
+    setLocation(session?.location ?? '');
+    setNotes(session?.notes ?? '');
+    setStatus(session?.status ?? 'scheduled');
+    setAddToCalendarOnSave(!session);
+    setFormError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, session, defaultDuration, defaultRateCents]);
 
   useEffect(() => {
     if (!visible) return;
@@ -139,7 +163,7 @@ export const SessionFormModal = ({
     notes: notes.trim() || null,
   });
 
-  const onSubmit = async () => {
+  const onSubmit = () => {
     setFormError(null);
     if (!isIsoDate(date)) return setFormError('Pick a valid date.');
     if (!isIsoTime(startTime)) return setFormError('Enter a start time as HH:mm (24h).');
@@ -148,24 +172,19 @@ export const SessionFormModal = ({
 
     const fields = buildFields();
 
-    setSubmitting(true);
-    const res = session ? await update({ id: session.id, ...fields }) : await create(fields);
-
-    if (!res.ok) {
-      setSubmitting(false);
-      return setFormError(res.error.message);
-    }
-
-    // Calendar sync — best-effort, never blocks the save.
-    const ctx = { studentName, satMode };
-    if (session) {
-      await syncOnEdit(res.value, ctx); // updates the event if one is linked
-    } else if (addToCalendarOnSave) {
-      await addToCalendar(res.value, ctx);
-    }
-
-    setSubmitting(false);
-    onClose();
+    void submit(
+      () => (session ? update({ id: session.id, ...fields }) : create(fields)),
+      async (saved) => {
+        // Calendar sync — best-effort, never blocks the save.
+        const ctx = { studentName, satMode };
+        if (session) {
+          await syncOnEdit(saved, ctx); // updates the event if one is linked
+        } else if (addToCalendarOnSave) {
+          await addToCalendar(saved, ctx);
+        }
+        onClose();
+      },
+    );
   };
 
   const onAddExisting = async () => {
