@@ -2,8 +2,7 @@
  * App entry point — the tutoring workflow.
  *
  * AppProviders initializes the data layer (SQLite + repositories) and theme/safe-area
- * context, then renders the navigation root. The design-system showcase remains
- * available at src/examples/DesignSystemShowcase for reference.
+ * context, then renders the navigation root.
  */
 import React from 'react';
 import { AppProviders } from './src/app/providers/AppProviders';
