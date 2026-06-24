@@ -31,7 +31,7 @@ const statusTone = (s: StudentStatus) =>
 
 export const StudentsListScreen = ({ navigation }: Props) => {
   const theme = useTheme();
-  const { select } = useResponsive();
+  const { select, isCompact } = useResponsive();
 
   const order = useStudentsStore((s) => s.order);
   const byId = useStudentsStore((s) => s.byId);
@@ -79,23 +79,41 @@ export const StudentsListScreen = ({ navigation }: Props) => {
       keyboardShouldPersistTaps="handled"
     >
       <VStack gap={theme.space.lg} style={{ width: '100%', maxWidth, padding: theme.space.lg }}>
-        <HStack gap={theme.space.md} justify="space-between" align="center" wrap>
-          <View style={{ flex: 1, minWidth: 220 }}>
-            <TextField value={query} onChangeText={setQuery} placeholder="Search students…" autoCapitalize="none" />
-          </View>
-          <HStack gap={theme.space.sm}>
-            <Button
-              label={showArchived ? 'Hide archived' : 'Show archived'}
-              variant="ghost"
-              size="sm"
-              onPress={() => setShowArchived((v) => !v)}
-            />
-            <Button label="Templates" variant="ghost" size="sm" onPress={() => navigation.navigate('Templates')} />
-            <Button label="Revenue" variant="ghost" size="sm" onPress={() => navigation.navigate('RevenueDashboard')} />
-            <Button label="Payments" variant="secondary" size="sm" onPress={() => navigation.navigate('Payments')} />
-            <Button label="Add student" variant="primary" size="sm" onPress={() => setAddOpen(true)} />
-          </HStack>
-        </HStack>
+        {/*
+          Header. On phones the search field takes its own full-width row and the
+          actions wrap across lines below — otherwise the five buttons overflow the
+          screen width on iOS. On wider screens they share one row.
+        */}
+        {(() => {
+          const actions = (
+            <HStack gap={theme.space.sm} wrap>
+              <Button
+                label={showArchived ? 'Hide archived' : 'Show archived'}
+                variant="ghost"
+                size="sm"
+                onPress={() => setShowArchived((v) => !v)}
+              />
+              <Button label="Templates" variant="ghost" size="sm" onPress={() => navigation.navigate('Templates')} />
+              <Button label="Revenue" variant="ghost" size="sm" onPress={() => navigation.navigate('RevenueDashboard')} />
+              <Button label="Payments" variant="secondary" size="sm" onPress={() => navigation.navigate('Payments')} />
+              <Button label="Add student" variant="primary" size="sm" onPress={() => setAddOpen(true)} />
+            </HStack>
+          );
+
+          return isCompact ? (
+            <VStack gap={theme.space.md}>
+              <TextField value={query} onChangeText={setQuery} placeholder="Search students…" autoCapitalize="none" />
+              {actions}
+            </VStack>
+          ) : (
+            <HStack gap={theme.space.md} justify="space-between" align="center" wrap>
+              <View style={{ flex: 1, minWidth: 220 }}>
+                <TextField value={query} onChangeText={setQuery} placeholder="Search students…" autoCapitalize="none" />
+              </View>
+              {actions}
+            </HStack>
+          );
+        })()}
 
         {loading ? (
           <Spinner fill />
