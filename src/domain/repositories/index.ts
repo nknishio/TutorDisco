@@ -22,7 +22,11 @@ import type { Session } from '../types/session';
 import type { AppSettings, SettingsPatch } from '../types/settings';
 import type { Student, StudentStatus } from '../types/student';
 import type {
+  AssignmentId,
   CalendarEventLinkId,
+  ChecklistItemId,
+  EmailTemplateId,
+  PaymentId,
   SatScoreId,
   SatSkillPerformanceId,
   SessionId,
@@ -68,7 +72,7 @@ export interface SessionRepository extends Repository<Session, SessionId> {
   ): Promise<readonly Session[]>;
 }
 
-export interface AssignmentRepository extends Repository<Assignment, import('../types/common').AssignmentId> {
+export interface AssignmentRepository extends Repository<Assignment, AssignmentId> {
   listBySession(
     sessionId: SessionId,
     opts?: ListOptions,
@@ -76,7 +80,7 @@ export interface AssignmentRepository extends Repository<Assignment, import('../
 }
 
 export interface ChecklistItemRepository
-  extends Repository<ChecklistItem, import('../types/common').ChecklistItemId> {
+  extends Repository<ChecklistItem, ChecklistItemId> {
   listBySession(
     sessionId: SessionId,
     opts?: ListOptions,
@@ -84,7 +88,7 @@ export interface ChecklistItemRepository
 }
 
 export interface PaymentRepository
-  extends Repository<Payment, import('../types/common').PaymentId> {
+  extends Repository<Payment, PaymentId> {
   listByStudent(studentId: StudentId, opts?: ListOptions): Promise<readonly Payment[]>;
   listBySession(sessionId: SessionId, opts?: ListOptions): Promise<readonly Payment[]>;
 }
@@ -107,7 +111,7 @@ export interface SettingsRepository {
 }
 
 export interface EmailTemplateRepository
-  extends Repository<EmailTemplate, import('../types/common').EmailTemplateId> {}
+  extends Repository<EmailTemplate, EmailTemplateId> {}
 
 export interface SatScoreRepository extends Repository<SatScore, SatScoreId> {
   listByStudent(studentId: StudentId, opts?: ListOptions): Promise<readonly SatScore[]>;
