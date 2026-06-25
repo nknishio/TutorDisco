@@ -30,6 +30,8 @@ interface SessionsState {
   update: (patch: UpdateInput<Session>) => Promise<Result<Session>>;
   complete: (id: SessionId) => Promise<Result<Session>>;
   cancel: (id: SessionId) => Promise<Result<Session>>;
+  /** Soft-delete a session (e.g. one created by mistake). */
+  remove: (id: SessionId) => Promise<Result<void>>;
 }
 
 const upsert = (state: SessionsState, session: Session): Partial<SessionsState> => {
@@ -109,6 +111,23 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
   cancel: async (id) => {
     const res = await getRepositories().sessions.update({ id, status: 'cancelled' });
     if (res.ok) set((s) => upsert(s, res.value));
+    return res;
+  },
+
+  remove: async (id) => {
+    const res = await getRepositories().sessions.softDelete(id);
+    if (res.ok) {
+      set((s) => {
+        const byId = { ...s.byId };
+        const removed = byId[id];
+        delete byId[id];
+        const byStudent = { ...s.byStudent };
+        if (removed) {
+          byStudent[removed.studentId] = (byStudent[removed.studentId] ?? []).filter((x) => x !== id);
+        }
+        return { byId, byStudent };
+      });
+    }
     return res;
   },
 }));
