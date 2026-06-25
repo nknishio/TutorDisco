@@ -27,6 +27,8 @@ const toNativeEvent = (draft: CalendarEventDraft) => ({
   endDate: draft.endsAt,
   location: draft.location ?? undefined,
   notes: draft.notes ?? undefined,
+  // expo-calendar uses a relative offset in minutes; negative = before the start.
+  alarms: draft.alarms.map((minutes) => ({ relativeOffset: -Math.max(0, Math.round(minutes)) })),
 });
 
 /** Find a calendar we can write to: the iOS default, else the first modifiable one. */

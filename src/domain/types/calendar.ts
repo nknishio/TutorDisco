@@ -43,6 +43,11 @@ export interface CalendarEventDraft {
   readonly endsAt: Date;
   readonly location: string | null;
   readonly notes: string | null;
+  /**
+   * Reminders, expressed as whole minutes BEFORE the start (0 = at the time of the
+   * event). Providers translate these to their native alarm/VALARM representation.
+   */
+  readonly alarms: readonly number[];
 }
 
 /** A handle to an event already created in a provider, used to update/remove it. */

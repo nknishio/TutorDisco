@@ -26,6 +26,8 @@ import { err, ok } from '../shared/utils/result';
 export interface SyncContext {
   studentName: string;
   satMode: boolean;
+  /** Reminders in whole minutes before the start (0 = at the time of the event). */
+  alarms?: readonly number[];
 }
 
 /** Provider metadata for the scheduling UI — so it never imports the provider registry. */
@@ -97,7 +99,12 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
         return err('unknown', message);
       }
 
-      const draft = sessionToEventDraft({ session, studentName: ctx.studentName, satMode: ctx.satMode });
+      const draft = sessionToEventDraft({
+        session,
+        studentName: ctx.studentName,
+        satMode: ctx.satMode,
+        alarms: ctx.alarms,
+      });
       const added = await provider.addEvent(draft);
       if (!added.ok) {
         set({ error: added.error.message });
@@ -144,7 +151,12 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
         return;
       }
 
-      const draft = sessionToEventDraft({ session, studentName: ctx.studentName, satMode: ctx.satMode });
+      const draft = sessionToEventDraft({
+        session,
+        studentName: ctx.studentName,
+        satMode: ctx.satMode,
+        alarms: ctx.alarms,
+      });
       const updated = await provider.updateEvent(refOf(link), draft);
       if (!updated.ok) {
         set({ error: updated.error.message });

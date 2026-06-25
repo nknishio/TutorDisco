@@ -29,10 +29,12 @@ export interface DraftInput {
   readonly session: Pick<Session, 'date' | 'startTime' | 'duration' | 'location' | 'notes'>;
   readonly studentName: string;
   readonly satMode: boolean;
+  /** Reminders in whole minutes before the start (0 = at the time of the event). */
+  readonly alarms?: readonly number[];
 }
 
 /** Build the provider-agnostic event draft for a session. */
-export const sessionToEventDraft = ({ session, studentName, satMode }: DraftInput): CalendarEventDraft => {
+export const sessionToEventDraft = ({ session, studentName, satMode, alarms }: DraftInput): CalendarEventDraft => {
   const startsAt = toLocalDate(session.date, session.startTime);
   const endsAt = new Date(startsAt.getTime() + session.duration * 60_000);
   return {
@@ -41,6 +43,7 @@ export const sessionToEventDraft = ({ session, studentName, satMode }: DraftInpu
     endsAt,
     location: session.location,
     notes: session.notes,
+    alarms: alarms ?? [],
   };
 };
 
@@ -80,6 +83,17 @@ export const buildIcsContent = (draft: CalendarEventDraft, opts: IcsOptions): st
   ];
   if (draft.location) lines.push(`LOCATION:${icsEscape(draft.location)}`);
   if (draft.notes) lines.push(`DESCRIPTION:${icsEscape(draft.notes)}`);
+  for (const minutes of draft.alarms) {
+    const safe = Math.max(0, Math.round(minutes));
+    lines.push(
+      'BEGIN:VALARM',
+      'ACTION:DISPLAY',
+      `DESCRIPTION:${icsEscape(draft.title)}`,
+      // Negative offset = before the start; PT0M fires at the start.
+      `TRIGGER:-PT${safe}M`,
+      'END:VALARM',
+    );
+  }
   lines.push('END:VEVENT', 'END:VCALENDAR');
   return lines.join('\r\n');
 };
