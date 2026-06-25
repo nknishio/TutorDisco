@@ -1,7 +1,7 @@
 /**
  * AssignmentFormModal — create or edit an assignment attached to a session.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTheme } from '../../../shared/theme';
 import { Button, HStack, Modal, Select, TextField, Text, VStack } from '../../../shared/ui';
 import type {
@@ -39,6 +39,19 @@ export const AssignmentFormModal = ({ visible, onClose, sessionId, assignment }:
   const [dueDate, setDueDate] = useState(assignment?.dueDate ?? '');
   const [status, setStatus] = useState<AssignmentStatus>(assignment?.status ?? 'pending');
   const { submitting, error: formError, setError: setFormError, submit } = useFormSubmit();
+
+  // Re-sync fields when the modal (re)opens for a given assignment. The modal stays
+  // mounted and is just toggled visible, so useState initializers (which run once at
+  // mount) would otherwise leave Edit showing stale/empty fields — notably the details.
+  useEffect(() => {
+    if (!visible) return;
+    setTitle(assignment?.title ?? '');
+    setDetails(assignment?.details ?? '');
+    setDueDate(assignment?.dueDate ?? '');
+    setStatus(assignment?.status ?? 'pending');
+    setFormError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, assignment]);
 
   const onSubmit = () => {
     setFormError(null);
