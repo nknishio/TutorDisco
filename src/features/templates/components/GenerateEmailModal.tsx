@@ -81,6 +81,7 @@ export const GenerateEmailModal = ({ visible, onClose, session, studentId }: Gen
       student_name: student?.name ?? '',
       parent_name: student?.parentName ?? '',
       session_date: formatIsoDate(session.date),
+      session_time: formatIsoTime(session.startTime),
       next_date: nextSession ? formatIsoDate(nextSession.date) : '',
       next_time: nextSession ? formatIsoTime(nextSession.startTime) : '',
       homework: assignments.length > 0 ? assignments.map(homeworkLine).join('\n') : 'No homework assigned.',

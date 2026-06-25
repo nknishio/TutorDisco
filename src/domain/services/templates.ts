@@ -21,6 +21,7 @@ export interface TemplateVariable {
 export const TEMPLATE_VARIABLES: readonly TemplateVariable[] = [
   { token: '{{student_name}}', key: 'student_name', label: 'Student name', sample: 'Ava Chen' },
   { token: '{{session_date}}', key: 'session_date', label: 'Session date', sample: 'Jun 15, 2026' },
+  { token: '{{session_time}}', key: 'session_time', label: 'Session time', sample: '3:00 PM' },
   { token: '{{next_date}}', key: 'next_date', label: 'Next session date', sample: 'Jun 22, 2026' },
   { token: '{{next_time}}', key: 'next_time', label: 'Next session time', sample: '3:00 PM' },
   { token: '{{homework}}', key: 'homework', label: 'Homework', sample: '• Algebra worksheet (due Jun 20)' },
