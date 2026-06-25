@@ -215,6 +215,12 @@ class SqliteSettingsRepository implements SettingsRepository {
       defaultCurrency: 'USD' as CurrencyCode,
       defaultRateCents: null,
       timezone: null,
+      defaultChecklistItems: [
+        'Review previous homework',
+        'Assign new homework',
+        'Note where we left off',
+      ],
+      defaultCalendarAlerts: [60],
       createdAt: now,
       updatedAt: now,
     };

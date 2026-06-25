@@ -10,6 +10,8 @@ import type { DatabaseClient } from '../client';
 import { migration0001Init } from './0001_init';
 import { migration0002CalendarSettings } from './0002_calendar_settings';
 import { migration0003StudentParentName } from './0003_student_parent_name';
+import { migration0004DefaultChecklist } from './0004_default_checklist';
+import { migration0005DefaultCalendarAlerts } from './0005_default_calendar_alerts';
 
 export interface Migration {
   /** Monotonic version. Must be unique and ordered. */
@@ -24,6 +26,8 @@ export const MIGRATIONS: readonly Migration[] = [
   migration0001Init,
   migration0002CalendarSettings,
   migration0003StudentParentName,
+  migration0004DefaultChecklist,
+  migration0005DefaultCalendarAlerts,
 ];
 
 const getUserVersion = async (db: DatabaseClient): Promise<number> => {

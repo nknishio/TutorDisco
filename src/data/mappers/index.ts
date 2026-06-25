@@ -65,6 +65,30 @@ const asNumber = (v: Cell): number => Number(v);
 const asBool = (v: Cell): boolean => v === 1 || v === '1';
 const fromBool = (v: boolean): number => (v ? 1 : 0);
 
+/** Parse a JSON-encoded array of strings, tolerating null/empty/malformed cells. */
+const asStringArray = (v: Cell): string[] => {
+  if (typeof v !== 'string' || v.trim() === '') return [];
+  try {
+    const parsed: unknown = JSON.parse(v);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+
+/** Parse a JSON-encoded array of finite numbers, tolerating null/empty/malformed cells. */
+const asNumberArray = (v: Cell): number[] => {
+  if (typeof v !== 'string' || v.trim() === '') return [];
+  try {
+    const parsed: unknown = JSON.parse(v);
+    return Array.isArray(parsed)
+      ? parsed.filter((x): x is number => typeof x === 'number' && Number.isFinite(x))
+      : [];
+  } catch {
+    return [];
+  }
+};
+
 // ---------------------------------------------------------------------------
 // Shared sync-metadata mapping
 // ---------------------------------------------------------------------------
@@ -255,6 +279,8 @@ export const settingsMapper: RowMapper<AppSettings> = {
     default_currency: s.defaultCurrency,
     default_rate_cents: s.defaultRateCents,
     timezone: s.timezone,
+    default_checklist_items: JSON.stringify(s.defaultChecklistItems ?? []),
+    default_calendar_alerts: JSON.stringify(s.defaultCalendarAlerts ?? []),
     created_at: s.createdAt,
     updated_at: s.updatedAt,
   }),
@@ -266,6 +292,8 @@ export const settingsMapper: RowMapper<AppSettings> = {
     defaultRateCents:
       row.default_rate_cents == null ? null : (asNumber(row.default_rate_cents) as Cents),
     timezone: asStringOrNull(row.timezone) as Timezone | null,
+    defaultChecklistItems: asStringArray(row.default_checklist_items),
+    defaultCalendarAlerts: asNumberArray(row.default_calendar_alerts),
     createdAt: asNumber(row.created_at) as EpochMillis,
     updatedAt: asNumber(row.updated_at) as EpochMillis,
   }),

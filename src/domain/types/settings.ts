@@ -17,6 +17,16 @@ export interface AppSettings {
   readonly defaultCurrency: CurrencyCode;
   readonly defaultRateCents: Cents | null;
   readonly timezone: Timezone | null;
+  /**
+   * Checklist item texts offered (pre-checked, individually skippable) when creating a
+   * new session, so a tutor's routine to-dos attach without retyping them each time.
+   */
+  readonly defaultChecklistItems: readonly string[];
+  /**
+   * Default calendar reminders for new sessions, as whole minutes before the start
+   * (0 = at the time of the event).
+   */
+  readonly defaultCalendarAlerts: readonly number[];
   readonly createdAt: EpochMillis;
   readonly updatedAt: EpochMillis;
 }
@@ -25,6 +35,12 @@ export interface AppSettings {
 export type SettingsPatch = Partial<
   Pick<
     AppSettings,
-    'satMode' | 'theme' | 'defaultCurrency' | 'defaultRateCents' | 'timezone'
+    | 'satMode'
+    | 'theme'
+    | 'defaultCurrency'
+    | 'defaultRateCents'
+    | 'timezone'
+    | 'defaultChecklistItems'
+    | 'defaultCalendarAlerts'
   >
 >;
