@@ -7,5 +7,6 @@ export { TextField, type TextFieldProps } from './TextField';
 export { Select, type SelectProps, type SelectOption } from './Select';
 export { CalendarPicker, type CalendarPickerProps } from './CalendarPicker';
 export { TimePicker, type TimePickerProps } from './TimePicker';
+export { TimeField, type TimeFieldProps } from './TimeField';
 export { Switch, type SwitchProps } from './Switch';
 export { DataTable, type DataTableProps, type Column } from './Table';
