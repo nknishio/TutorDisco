@@ -96,9 +96,16 @@ Because it's a single-page app, configure the host to **rewrite all routes to
 `index.html`** so deep links (e.g. `/students/:id`) resolve. The app's link scheme and
 route config live in `src/app/navigation`.
 
-> Note: on web, SQLite runs via WASM and data is stored in the browser. Each browser/
-> device has its own local database — there is no shared backend yet (see the roadmap's
-> cloud-sync item).
+> ⚠️ **Web SQLite needs cross-origin isolation headers.** `expo-sqlite` on web (WASM/OPFS)
+> generally requires `Cross-Origin-Opener-Policy: same-origin` and
+> `Cross-Origin-Embedder-Policy: require-corp`. **GitHub Pages can't set custom headers, so
+> it's not a good fit.** Use a host that can — **Cloudflare Pages** or **Netlify** (both
+> free) — and add a headers config (e.g. a `public/_headers` file) setting both. Verify the
+> app loads and the local database initializes before relying on a host.
+
+> Note: on web, SQLite runs in the browser; each browser/origin has its own databases
+> (accounts + per-account data). There is no shared backend yet, so accounts and data do
+> **not** carry across browsers or devices (see the roadmap's cloud-sync item).
 
 ---
 

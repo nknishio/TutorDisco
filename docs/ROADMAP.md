@@ -16,19 +16,21 @@ Foundational quality before adding surface area.
   then cover the domain services, mappers, and repositories. See [TESTING.md](TESTING.md).
 - 🟢 **Lint + CI** — add ESLint and a CI pipeline running `typecheck`, `lint`, and `test`
   on every PR.
-- 🟢 **Confirm-before-destroy** — confirmation prompts on delete (templates, payments,
-  students) and surfaced success/error feedback for currently fire-and-forget actions
-  (`void remove(...)`, `void markPaid(...)`).
+- 🟢 **Confirm-before-destroy** — extend the inline confirm used for deleting sessions to
+  the other destructive/fire-and-forget actions (payment delete, template delete). Some
+  (session delete, mark/unmark paid) are done.
 - 🟡 **Toast/feedback system** — a single app-level toast so async actions report success
   and failure consistently, replacing the mix of inline errors and silent `void` calls.
 
 ## Next (1–2 releases out)
 
 - 🔴 **Cloud sync & multi-device** — the data layer is already sync-shaped (tombstones,
-  per-row `syncStatus`/`serverRev`, a `DatabaseClient` seam). Add a sync client behind the
-  existing repository contracts so nothing upstream changes. Unlocks web↔mobile shared data.
-- 🟡 **Auth & backup** — optional account for sync + encrypted backup/restore/export of the
-  local database.
+  per-row `syncStatus`/`serverRev`, a `DatabaseClient` seam) and per-account databases now
+  exist. Add a sync client behind the existing repository contracts so nothing upstream
+  changes. Unlocks web↔mobile shared data and cross-device account access.
+- 🟡 **Account hardening & backup** — *local password-protected accounts shipped* (see
+  `src/auth/`). Follow-ups: optional per-launch re-lock, password change/reset, a stronger
+  KDF than salted SHA-256 if `expo-secure-store` is added, and encrypted backup/restore/export.
 - 🟡 **Recurring sessions** — schedule weekly/biweekly series with per-occurrence edits.
 - 🟡 **Invoicing & receipts** — generate a PDF invoice/receipt from payments; email or share.
 - 🟡 **SAT module depth** — score history and per-skill performance views (schema already

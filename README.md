@@ -6,19 +6,25 @@ payments, view revenue analytics, sync sessions to the device calendar, and gene
 parent/student emails from reusable templates.
 
 Built with Expo + React Native, EasyTutor runs from a single codebase on **iOS, Android,
-and the web**. All data lives on-device in SQLite — no account, no server, no network
-required.
+and the web**. All data lives on-device in SQLite — no server, no network required. Users
+sign into **local, password-protected accounts**, each with its own database, so different
+tutors keep separate data on the same device/browser.
+
+> New to this codebase? Start with **[CLAUDE.md](CLAUDE.md)** — it's the up-to-date
+> orientation (architecture, conventions, gotchas) for adding features or fixing bugs.
 
 ---
 
 ## Highlights
 
+- **Local accounts** — password-protected sign-in; each account keeps its own separated data on the device/browser (no server).
 - **Students** — profiles with grade, school, parent contacts, default rate & duration, and status (active/paused/archived).
-- **Sessions** — month-view scheduling, per-session rate/duration, status (scheduled/completed/cancelled/no-show), notes, assignments, and a completion checklist.
-- **Payments** — auto-calculated amounts from a session's rate × duration, pending/paid tracking, and one-tap billing from completed sessions.
+- **Sessions** — month-view scheduling, a per-platform time picker, per-session rate/duration, status (scheduled/completed/cancelled/no-show), notes, assignments, and a completion checklist (with customizable app-wide default items).
+- **Session history quick actions** — change status from a color-coded dropdown, mark complete/cancel, mark/unmark paid, and delete — right from a student's history.
+- **Payments** — auto-calculated amounts from a session's rate × duration, pending/paid tracking, one-tap billing from completed sessions, and quick delete.
 - **Revenue dashboard** — earnings totals, outstanding balances, and per-student breakdowns.
-- **Calendar sync** — add/update/remove sessions in the OS calendar (`expo-calendar`) or export a standard `.ics` file to any calendar app.
-- **Email templates** — reusable templates with variable tokens, a live preview, and one-tap generation + clipboard copy from real session data.
+- **Calendar sync** — add/update/remove sessions in the OS calendar (`expo-calendar`) with configurable alerts/reminders (and customizable defaults), or export a standard `.ics` file to any calendar app.
+- **Email templates** — reusable templates with variable tokens (incl. `session_time`), a live preview, and one-tap generation + clipboard copy from real session data.
 - **SAT Mode** — a settings flag that adapts event titles and copy for SAT-focused tutoring.
 - **Theming** — light/dark/system, a responsive layout system, and an accessible shared UI kit.
 
@@ -95,12 +101,14 @@ replacement). Full rationale lives in **[architecture.md](architecture.md)**.
 
 ```
 src/
-  app/            Composition root: DI container, providers, navigation
+  app/            Composition root: DI container, providers (incl. AuthGate), navigation
+  auth/           Local-account registry DB + password hashing
   data/           SQLite client, migrations, repositories, mappers, seed
   domain/         Types, repository contracts, pure business services
+  features/       Feature screens & modals (students, sessions, payments, templates, auth)
   integrations/   Calendar providers (Apple Calendar, ICS export)
   shared/         Theme, responsive system, UI kit, hooks, utils, validation
-  store/          Zustand stores (one per aggregate)
+  store/          Zustand stores (one per aggregate, + authStore)
 ```
 
 ### Screens
@@ -113,10 +121,15 @@ src/
 
 ## Data & privacy
 
-All records are stored locally in SQLite. Soft deletes (tombstones) and per-row sync
-metadata are already in the schema so cloud sync can be added without a migration. The
-app requests calendar permission only when you choose to sync a session; no analytics or
-network calls are made.
+All records are stored locally in SQLite. Each account has its own tutoring database; a
+small `easytutor-accounts.db` registry holds accounts (passwords hashed with salted
+SHA-256 via `expo-crypto`) and the active-account pointer. Soft deletes (tombstones) and
+per-row sync metadata are already in the schema so cloud sync can be added without a
+migration. The app requests calendar permission only when you choose to sync a session; no
+analytics or network calls are made.
+
+> Local-only trade-offs: data lives only on that device/browser — it doesn't sync across
+> devices, and there's no password recovery. Cross-device sync is the "cloud sync" roadmap item.
 
 ---
 
@@ -124,8 +137,9 @@ network calls are made.
 
 | Doc | What's in it |
 | --- | --- |
-| [architecture.md](architecture.md) | Full architecture & design rationale |
-| [docs/schema.md](docs/schema.md) | Database schema reference |
+| [CLAUDE.md](CLAUDE.md) | **Start here** — up-to-date orientation, conventions & gotchas for contributors |
+| [architecture.md](architecture.md) | Architecture & design rationale (original design doc) |
+| [docs/schema.md](docs/schema.md) | Schema *design* doc (as-built schema lives in the migrations) |
 | [docs/navigation.md](docs/navigation.md) | Navigation map |
 | [docs/SETUP.md](docs/SETUP.md) | Environment setup & running locally |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Building & releasing (EAS, web) |

@@ -1,8 +1,13 @@
 # Tutoring CRM — Architecture
 
-> **Status:** Design phase. No feature code yet. This document, the schema design,
-> the type definitions, and the navigation map are the contract the implementation
-> will be built against.
+> ⚠️ **Status: original design doc — the app is now implemented and has diverged from
+> parts of this.** It remains the best source of *rationale* (layering, the repository/
+> DI seam, theme & responsive strategy, sync-readiness), but verify specifics against the
+> code. Notably since this was written: **local password-protected accounts** were added
+> (each account has its own SQLite DB; see `src/auth/`, `src/store/authStore.ts`,
+> `AuthGate`), and the as-built data model is the one in `src/data/db/migrations/` (see
+> `CLAUDE.md`), not the broader schema in `docs/schema.md`. For day-to-day conventions and
+> gotchas, **start with `CLAUDE.md`.**
 
 ---
 

@@ -64,17 +64,21 @@ There are currently **no required environment variables** — the app is fully l
 
 ## 5. Database & migrations
 
-SQLite is opened and migrated automatically on first launch by the DI container
-(`src/app/di/container.ts` → `src/data/db`). On a fresh database:
+On first launch you create a **local account** (sign-up screen). Each account opens its own
+tutoring SQLite database (the first account adopts the legacy `tutor.db`); a separate
+`easytutor-accounts.db` registry stores accounts and the active-account pointer. Signing in
+points the data layer at that account's database. When an account's database is opened
+(`src/app/di/container.ts` → `src/data/db`):
 
 1. `PRAGMA journal_mode = WAL` and `foreign_keys = ON` are set per connection.
-2. Migrations in `src/data/db/migrations/` run in order (`0001_init`, `0002_…`, `0003_…`).
+2. Migrations in `src/data/db/migrations/` run in order (`0001_init` … `0005_*`).
 3. Default email templates are seeded (`src/data/seed.ts`).
 
 To add a migration: create `src/data/db/migrations/000N_description.ts`, export it, and
-register it in `migrations/index.ts`. Migrations are forward-only and versioned.
+register it in `migrations/index.ts`. Migrations are forward-only and versioned. (Each
+per-account database runs the same migration set.)
 
-To reset local data during development:
+To reset local data during development (this also clears accounts):
 
 - **Web**: clear the site's IndexedDB/storage in the browser devtools.
 - **iOS Simulator**: Device ▸ Erase All Content and Settings, or delete the app.
@@ -91,7 +95,8 @@ permission dialog. The ICS export path needs no permission and works everywhere
 
 ```bash
 npm run typecheck   # should exit 0
-npm start           # app should reach the Students list with seeded templates available
+npm start           # first launch shows the sign-up screen; create an account, then you
+                    # reach the Students list with seeded templates available
 ```
 
 ## Troubleshooting

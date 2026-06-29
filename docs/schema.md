@@ -1,8 +1,17 @@
 # Database Schema Design
 
-SQLite (`expo-sqlite`). This document is the **canonical schema design**; the
-runtime DDL lives at `src/data/db/schema.sql` and is applied via versioned
-migrations in `src/data/db/migrations/`.
+> ⚠️ **Status: original design doc — diverged from the as-built schema.** This describes a
+> more ambitious design (e.g. `guardians`, `subjects`, `packages`, `invoices`,
+> `sat_attempts`, `sat_targets`) that was **not** implemented as written. The **source of
+> truth for the real schema** is the migrations in `src/data/db/migrations/` (0001–0005);
+> a current summary lives in `CLAUDE.md` ("Data model"). As built, the tables are:
+> `students`, `sessions`, `assignments`, `checklist_items`, `payments`, `email_templates`,
+> `sat_scores`, `sat_skill_performance`, `calendar_links`, and a singleton `settings`
+> (with `default_checklist_items` and `default_calendar_alerts` JSON columns). A separate
+> `easytutor-accounts.db` holds local accounts. Keep this file for design rationale only.
+
+SQLite (`expo-sqlite`). This document is the original schema design; the runtime DDL is
+defined by the versioned migrations in `src/data/db/migrations/`.
 
 ---
 

@@ -102,11 +102,21 @@ Suggested `package.json` scripts to add:
 ## 4. Test infrastructure to build
 
 - **In-memory `DatabaseClient`** — implement the `DatabaseClient` interface
-  (`data/db/client.ts`) backed by `expo-sqlite`'s in-memory database (or a JS fake) so
-  repository tests run fast and isolated. This is the single most valuable piece of test
-  infra; it unlocks the entire integration layer without a device.
-- **Store test harness** — initialize the DI container with the in-memory client, then
-  exercise stores directly (`getRepositories()` is the only seam to override).
+  (`data/db/client.ts`, incl. `close()`) backed by `expo-sqlite`'s in-memory database (or a
+  JS fake) so repository tests run fast and isolated. This is the single most valuable piece
+  of test infra; it unlocks the entire integration layer without a device.
+- **Store test harness** — initialize the DI container with the in-memory client
+  (`setContainer`/`reinitContainer`), then exercise stores directly (`getRepositories()` is
+  the only seam to override). Cover `resetAllStores()` clearing state between accounts.
+
+### Auth layer (new)
+- **`src/auth/crypto.ts`** — `hashPassword`/`verifyPassword`: same password+salt reproduces
+  the hash; wrong password fails; distinct salts per call.
+- **`src/auth/accountsDb.ts`** — create/authenticate/list accounts; duplicate username
+  rejected; first account adopts `tutor.db` while later accounts get a unique `db_name`;
+  active-account pointer get/set.
+- **`authStore`** — register/login activate the account and point the data layer at its DB;
+  logout clears the active account and resets stores.
 - **Builders/fixtures** — small factory helpers (`makeStudent()`, `makeSession()`) to
   keep tests readable.
 
