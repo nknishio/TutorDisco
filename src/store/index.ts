@@ -6,3 +6,5 @@ export { useCalendarStore, CALENDAR_PROVIDER_OPTIONS, type SyncContext } from '.
 export { useAssignmentsStore } from './assignmentsStore';
 export { useChecklistStore } from './checklistStore';
 export { useTemplatesStore } from './templatesStore';
+export { useAuthStore } from './authStore';
+export { resetAllStores } from './reset';

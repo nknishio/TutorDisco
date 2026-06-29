@@ -20,7 +20,7 @@ import {
 } from '../../../shared/ui';
 import type { Student, StudentStatus } from '../../../domain/types';
 import { formatCents } from '../../../shared/utils/money';
-import { useStudentsStore } from '../../../store';
+import { useAuthStore, useStudentsStore } from '../../../store';
 import type { RootStackParamList } from '../../../app/navigation/types';
 import { StudentFormModal } from '../components/StudentFormModal';
 
@@ -39,6 +39,9 @@ export const StudentsListScreen = ({ navigation }: Props) => {
   const status = useStudentsStore((s) => s.status);
   const setQuery = useStudentsStore((s) => s.setQuery);
   const load = useStudentsStore((s) => s.load);
+
+  const currentAccount = useAuthStore((s) => s.currentAccount);
+  const logout = useAuthStore((s) => s.logout);
 
   const [showArchived, setShowArchived] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -86,7 +89,8 @@ export const StudentsListScreen = ({ navigation }: Props) => {
         */}
         {(() => {
           const actions = (
-            <HStack gap={theme.space.sm} wrap>
+            <HStack gap={theme.space.sm} align="center" wrap>
+              {currentAccount ? <Badge label={currentAccount.displayName} tone="neutral" /> : null}
               <Button
                 label={showArchived ? 'Hide archived' : 'Show archived'}
                 variant="ghost"
@@ -97,6 +101,7 @@ export const StudentsListScreen = ({ navigation }: Props) => {
               <Button label="Revenue" variant="ghost" size="sm" onPress={() => navigation.navigate('RevenueDashboard')} />
               <Button label="Payments" variant="secondary" size="sm" onPress={() => navigation.navigate('Payments')} />
               <Button label="Add student" variant="primary" size="sm" onPress={() => setAddOpen(true)} />
+              <Button label="Sign out" variant="ghost" size="sm" onPress={() => void logout()} />
             </HStack>
           );
 

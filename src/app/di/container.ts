@@ -18,6 +18,26 @@ export const initContainer = async (databaseName?: string): Promise<DataLayer> =
   return container;
 };
 
+/**
+ * Switch the active database (e.g. on login / account switch). Tears down the current
+ * data layer — closing its connection — and rebuilds against `databaseName`.
+ */
+export const reinitContainer = async (databaseName: string): Promise<DataLayer> => {
+  if (container) {
+    try {
+      await container.db.close();
+    } catch {
+      // Best-effort close; proceed with the swap regardless.
+    }
+    container = null;
+  }
+  container = await initDataLayer(databaseName);
+  return container;
+};
+
+/** Whether a data layer is currently initialized. */
+export const hasContainer = (): boolean => container !== null;
+
 /** Access repositories. Throws if called before `initContainer` resolves. */
 export const getRepositories = (): Repositories => {
   if (!container) {

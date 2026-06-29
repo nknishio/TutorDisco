@@ -6,6 +6,7 @@
  * mappers must conform to these types.
  */
 export * from './common';
+export * from './account';
 export * from './settings';
 export * from './student';
 export * from './session';

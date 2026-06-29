@@ -28,6 +28,8 @@ export interface DatabaseClient {
   getFirst<R>(sql: string, params?: BindParams): Promise<R | null>;
   /** Run `fn` inside a transaction; rolls back if it throws. */
   transaction<T>(fn: () => Promise<T>): Promise<T>;
+  /** Close the underlying connection (e.g. when switching the active database). */
+  close(): Promise<void>;
 }
 
 /** Concrete client backed by expo-sqlite (works on iOS, Android, and web/WASM). */
@@ -68,5 +70,9 @@ export class ExpoSqliteClient implements DatabaseClient {
         result = await fn();
       })
       .then(() => result);
+  }
+
+  close(): Promise<void> {
+    return this.db.closeAsync();
   }
 }
