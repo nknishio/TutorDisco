@@ -5,7 +5,7 @@
  * (hourly rate × duration / 60); the field stays editable for ad-hoc adjustments.
  * A received date is required once the status is 'paid' (enforced by validation too).
  */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTheme } from '../../../shared/theme';
 import { Button, HStack, Modal, Select, Text, TextField, VStack } from '../../../shared/ui';
 import type {
@@ -59,6 +59,20 @@ export const PaymentFormModal = ({ visible, onClose, payment, studentId }: Payme
   const [receivedDate, setReceivedDate] = useState<string>(payment?.receivedDate ?? todayIsoDate());
 
   const { submitting, error: formError, setError: setFormError, submit } = useFormSubmit();
+
+  // Re-sync fields when the modal (re)opens for a given payment. The modal stays mounted
+  // and is just toggled visible, so useState initializers (run once at mount) would leave
+  // Edit showing a blank form instead of the payment's current values.
+  useEffect(() => {
+    if (!visible) return;
+    setStudent(payment?.studentId ?? studentId ?? NONE);
+    setSession(payment?.sessionId ?? NONE);
+    setAmount(payment ? centsToDollars(payment.amount) : '');
+    setStatus(payment?.status ?? 'pending');
+    setReceivedDate(payment?.receivedDate ?? todayIsoDate());
+    setFormError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, payment, studentId]);
 
   const studentOptions = useMemo(
     () => [

@@ -6,7 +6,7 @@
  * haven't been billed yet (amount = rate × duration).
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../../shared/theme';
 import {
@@ -48,6 +48,7 @@ export const PaymentsScreen = ({ navigation }: Props) => {
   const loadPayments = usePaymentsStore((s) => s.loadAll);
   const markPaid = usePaymentsStore((s) => s.markPaid);
   const billSession = usePaymentsStore((s) => s.billSession);
+  const removePayment = usePaymentsStore((s) => s.remove);
 
   const studentsById = useStudentsStore((s) => s.byId);
   const loadStudents = useStudentsStore((s) => s.load);
@@ -114,14 +115,22 @@ export const PaymentsScreen = ({ navigation }: Props) => {
     {
       id: 'action',
       header: '',
-      flex: 1,
+      flex: 2,
       align: 'right',
-      render: (p) =>
-        p.status === 'paid' || p.status === 'cancelled' ? (
-          <View />
-        ) : (
-          <Button label="Mark paid" variant="secondary" size="sm" onPress={() => void markPaid(p.id, todayIsoDate())} />
-        ),
+      render: (p) => (
+        <HStack gap={theme.space.xs} justify="flex-end" align="center">
+          {p.status === 'paid' || p.status === 'cancelled' ? null : (
+            <Button label="Mark paid" variant="secondary" size="sm" onPress={() => void markPaid(p.id, todayIsoDate())} />
+          )}
+          <Button
+            label="🗑"
+            accessibilityLabel="Delete payment"
+            variant="ghost"
+            size="sm"
+            onPress={() => void removePayment(p.id)}
+          />
+        </HStack>
+      ),
     },
   ];
 
