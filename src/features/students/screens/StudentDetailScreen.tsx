@@ -197,9 +197,9 @@ const SessionHistoryEntry = ({
             <Badge label="Paid" tone="success" />
             <Button label="Unmark paid" size="sm" variant="ghost" onPress={onUnmarkPaid} />
           </HStack>
-        ) : (
+        ) : session.status === 'completed' ? (
           <Button label="Mark paid" size="sm" variant="secondary" onPress={onMarkPaid} loading={payingBusy} />
-        )}
+        ) : null}
 
         {confirmDelete ? (
           <HStack gap={theme.space.xs} align="center">
