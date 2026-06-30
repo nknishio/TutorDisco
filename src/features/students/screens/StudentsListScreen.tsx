@@ -20,7 +20,12 @@ import {
 } from '../../../shared/ui';
 import type { Assignment, Session, SessionId, Student, StudentStatus } from '../../../domain/types';
 import { formatCents } from '../../../shared/utils/money';
-import { formatIsoDate, todayIsoDate } from '../../../shared/utils/datetime';
+import { formatIsoTime, todayIsoDate } from '../../../shared/utils/datetime';
+
+const formatSessionDateTime = (date: string, time: string): string => {
+  const [y, m, d] = date.split('-').map(Number);
+  return `${m}/${d}/${String(y).slice(-2)} @ ${formatIsoTime(time)}`;
+};
 import { useAuthStore, useStudentsStore, useSessionsStore, useAssignmentsStore } from '../../../store';
 import type { RootStackParamList } from '../../../app/navigation/types';
 import { StudentFormModal } from '../components/StudentFormModal';
@@ -132,7 +137,7 @@ export const StudentsListScreen = ({ navigation }: Props) => {
       render: (s) => {
         const sess = nextSessionByStudent[s.id];
         return sess
-          ? <Text color="textMuted">{formatIsoDate(sess.date)}</Text>
+          ? <Text color="textMuted">{formatSessionDateTime(sess.date, sess.startTime)}</Text>
           : <Text color="textMuted">Not scheduled</Text>;
       },
     },
