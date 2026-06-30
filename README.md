@@ -1,4 +1,4 @@
-# EasyTutor
+# TutorDisco
 
 A local-first tutoring CRM for independent tutors and small tutoring businesses. Track
 students, schedule sessions, manage assignments and session checklists, bill and record
