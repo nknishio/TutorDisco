@@ -124,9 +124,6 @@ export const StudentsListScreen = ({ navigation }: Props) => {
 
   const columns: Column<Student>[] = [
     { id: 'name', header: 'Name', flex: 2, render: (s) => <Text variant="bodyStrong">{s.name}</Text> },
-    { id: 'grade', header: 'Grade', flex: 1, render: (s) => <Text color="textMuted">{s.gradeLevel ?? '—'}</Text> },
-    { id: 'rate', header: 'Rate', flex: 1, align: 'right', render: (s) => <Text color="textMuted">{formatCents(s.defaultHourlyRate)}/hr</Text> },
-    { id: 'status', header: 'Status', flex: 1, align: 'right', render: (s) => <Badge label={s.status} tone={statusTone(s.status)} /> },
     {
       id: 'next_session',
       header: 'Next Session',
@@ -151,6 +148,8 @@ export const StudentsListScreen = ({ navigation }: Props) => {
         return <Text color="textMuted">{val.title}</Text>;
       },
     },
+    { id: 'rate', header: 'Rate', flex: 1, align: 'right', render: (s) => <Text color="textMuted">{formatCents(s.defaultHourlyRate)}/hr</Text> },
+    { id: 'status', header: 'Status', flex: 1, align: 'right', render: (s) => <Badge label={s.status} tone={statusTone(s.status)} /> },
   ];
 
   const maxWidth = select({ compact: 9999, expanded: 1080 });
