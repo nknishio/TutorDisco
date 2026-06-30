@@ -72,7 +72,7 @@ export const buildIcsContent = (draft: CalendarEventDraft, opts: IcsOptions): st
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//EasyTutor//Tutoring//EN',
+    'PRODID:-//TutorDisco//Tutoring//EN',
     'CALSCALE:GREGORIAN',
     'BEGIN:VEVENT',
     `UID:${opts.uid}`,

@@ -1,5 +1,5 @@
 /**
- * Accounts registry — a small SQLite database (`easytutor-accounts.db`) holding the
+ * Accounts registry — a small SQLite database (`tutordisco-accounts.db`) holding the
  * cross-account list and the active-account pointer. It is intentionally SEPARATE from
  * the per-user tutoring databases: a per-user DB can't hold the global account registry.
  *
@@ -14,7 +14,7 @@ import { err, ok } from '../shared/utils/result';
 import { nowMillis } from '../shared/utils/time';
 import { hashPassword, verifyPassword } from './crypto';
 
-const ACCOUNTS_DB_NAME = 'easytutor-accounts.db';
+const ACCOUNTS_DB_NAME = 'tutordisco-accounts.db';
 /** The first account adopts the pre-login default tutoring database. */
 const ADOPT_DB_NAME = 'tutor.db';
 const ACTIVE_KEY = 'active_account_id';

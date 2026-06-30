@@ -6,7 +6,7 @@ source of truth for conventions. (`architecture.md` and `docs/schema.md` are ear
 
 ## What this is
 
-**EasyTutor** — a local-first tutoring CRM built with Expo + React Native (TypeScript),
+**TutorDisco** — a local-first tutoring CRM built with Expo + React Native (TypeScript),
 running from one codebase on **iOS, Android, and web** (react-native-web). All data lives
 on-device in SQLite; there is no backend. Users sign into **local accounts**, each with its
 own database (see "Multi-account" below).
@@ -53,7 +53,7 @@ Hard rules:
 
 ## Multi-account / auth (important — added after the original design)
 
-- A separate registry DB **`easytutor-accounts.db`** (`src/auth/accountsDb.ts`) holds the
+- A separate registry DB **`tutordisco-accounts.db`** (`src/auth/accountsDb.ts`) holds the
   account list (salted SHA-256 via `expo-crypto`, in `src/auth/crypto.ts`) and the active
   account pointer. Each account owns its **own** tutoring DB; the **first** account adopts
   the legacy default `tutor.db` so pre-login data is preserved, later accounts get

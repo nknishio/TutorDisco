@@ -38,6 +38,9 @@ export interface DataTableProps<T> {
 const alignToFlex = (a: Column<unknown>['align']): ViewStyle['alignItems'] =>
   a === 'right' ? 'flex-end' : a === 'center' ? 'center' : 'flex-start';
 
+const alignToJustify = (a: Column<unknown>['align']): ViewStyle['justifyContent'] =>
+  a === 'right' ? 'flex-end' : a === 'center' ? 'center' : 'flex-start';
+
 const renderCell = (node: ReactNode): ReactNode =>
   typeof node === 'string' || typeof node === 'number' ? <Text>{node}</Text> : node;
 
@@ -142,7 +145,7 @@ export function DataTable<T>({
               }}
             >
               {columns.map((col) => (
-                <View key={col.id} style={{ flex: col.flex ?? 1, alignItems: alignToFlex(col.align) }}>
+                <View key={col.id} style={{ flex: col.flex ?? 1, flexDirection: 'row', justifyContent: alignToJustify(col.align) }}>
                   {renderCell(col.render(row))}
                 </View>
               ))}

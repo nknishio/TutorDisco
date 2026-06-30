@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "EasyTutor",
-    "slug": "easytutor",
-    "scheme": "easytutor",
+    "name": "TutorDisco",
+    "slug": "tutordisco",
+    "scheme": "tutordisco",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -13,22 +13,22 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.easytutor",
+      "bundleIdentifier": "com.anonymous.tutordisco",
       "infoPlist": {
-        "NSCalendarsUsageDescription": "EasyTutor adds and updates tutoring sessions in your calendar.",
-        "NSCalendarsFullAccessUsageDescription": "EasyTutor adds and updates tutoring sessions in your calendar."
+        "NSCalendarsUsageDescription": "TutorDisco adds and updates tutoring sessions in your calendar.",
+        "NSCalendarsFullAccessUsageDescription": "TutorDisco adds and updates tutoring sessions in your calendar."
       }
     },
     "android": {
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.easytutor"
+      "package": "com.anonymous.tutordisco"
     },
     "plugins": [
       "expo-asset",
       [
         "expo-calendar",
         {
-          "calendarPermission": "EasyTutor adds and updates tutoring sessions in your calendar."
+          "calendarPermission": "TutorDisco adds and updates tutoring sessions in your calendar."
         }
       ],
       "expo-sharing"

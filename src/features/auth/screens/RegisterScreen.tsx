@@ -44,7 +44,7 @@ export const RegisterScreen = ({ onSwitchToLogin }: RegisterScreenProps) => {
       keyboardShouldPersistTaps="handled"
     >
       <View style={{ width: '100%', maxWidth: 400 }}>
-        <Card title="Create account" subtitle="EasyTutor">
+        <Card title="Create account" subtitle="TutorDisco">
           <VStack gap={theme.space.lg}>
             {error ? <Text color="danger">{error}</Text> : null}
             <TextField label="Display name" value={displayName} onChangeText={setDisplayName} placeholder="e.g. Ava Chen" />

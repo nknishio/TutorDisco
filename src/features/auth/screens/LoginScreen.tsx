@@ -40,7 +40,7 @@ export const LoginScreen = ({ onSwitchToRegister }: LoginScreenProps) => {
       keyboardShouldPersistTaps="handled"
     >
       <View style={{ width: '100%', maxWidth: 400 }}>
-        <Card title="Sign in" subtitle="EasyTutor">
+        <Card title="Sign in" subtitle="TutorDisco">
           <VStack gap={theme.space.lg}>
             {error ? <Text color="danger">{error}</Text> : null}
             <TextField
@@ -62,6 +62,9 @@ export const LoginScreen = ({ onSwitchToRegister }: LoginScreenProps) => {
             <Button label="Create an account" variant="ghost" fullWidth onPress={onSwitchToRegister} disabled={submitting} />
           </VStack>
         </Card>
+        <Text variant="caption" color="textSubtle" style={{ textAlign: 'center', marginTop: theme.space.md }}>
+          disco — Latin for “I learn”
+        </Text>
       </View>
     </ScrollView>
   );

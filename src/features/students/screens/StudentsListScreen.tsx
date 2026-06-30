@@ -18,9 +18,10 @@ import {
   TextField,
   VStack,
 } from '../../../shared/ui';
-import type { Student, StudentStatus } from '../../../domain/types';
+import type { Assignment, Session, SessionId, Student, StudentStatus } from '../../../domain/types';
 import { formatCents } from '../../../shared/utils/money';
-import { useAuthStore, useStudentsStore } from '../../../store';
+import { formatIsoDate, todayIsoDate } from '../../../shared/utils/datetime';
+import { useAuthStore, useStudentsStore, useSessionsStore, useAssignmentsStore } from '../../../store';
 import type { RootStackParamList } from '../../../app/navigation/types';
 import { StudentFormModal } from '../components/StudentFormModal';
 
@@ -43,12 +44,28 @@ export const StudentsListScreen = ({ navigation }: Props) => {
   const currentAccount = useAuthStore((s) => s.currentAccount);
   const logout = useAuthStore((s) => s.logout);
 
+  const sessionsByStudent = useSessionsStore((s) => s.byStudent);
+  const sessionsById = useSessionsStore((s) => s.byId);
+  const loadAllSessions = useSessionsStore((s) => s.loadAll);
+
+  const assignmentsBySession = useAssignmentsStore((s) => s.bySession);
+  const assignmentsById = useAssignmentsStore((s) => s.byId);
+  const loadForSessions = useAssignmentsStore((s) => s.loadForSessions);
+
   const [showArchived, setShowArchived] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void (async () => {
+      await loadAllSessions();
+      const ids = Object.keys(useSessionsStore.getState().byId) as SessionId[];
+      void loadForSessions(ids);
+    })();
+  }, [loadAllSessions, loadForSessions]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -65,11 +82,75 @@ export const StudentsListScreen = ({ navigation }: Props) => {
       );
   }, [order, byId, query, showArchived]);
 
+  const today = todayIsoDate();
+
+  const nextSessionByStudent = useMemo(() => {
+    const map: Record<string, Session | null> = {};
+    for (const student of visible) {
+      const sessions = (sessionsByStudent[student.id] ?? [])
+        .map((id) => sessionsById[id])
+        .filter((s): s is Session => Boolean(s))
+        .filter((s) => s.status === 'scheduled' && s.date >= today)
+        .sort((a, b) => a.date === b.date ? a.startTime.localeCompare(b.startTime) : a.date.localeCompare(b.date));
+      map[student.id] = sessions[0] ?? null;
+    }
+    return map;
+  }, [visible, sessionsByStudent, sessionsById, today]);
+
+  const nextAssignmentByStudent = useMemo(() => {
+    const map: Record<string, Assignment | null | 'no_session'> = {};
+    for (const student of visible) {
+      if (!nextSessionByStudent[student.id]) {
+        map[student.id] = 'no_session';
+        continue;
+      }
+      const upcomingSessions = (sessionsByStudent[student.id] ?? [])
+        .map((id) => sessionsById[id])
+        .filter((s): s is Session => Boolean(s))
+        .filter((s) => s.status === 'scheduled' && s.date >= today)
+        .sort((a, b) => a.date.localeCompare(b.date));
+      let found: Assignment | null = null;
+      for (const sess of upcomingSessions) {
+        const pending = (assignmentsBySession[sess.id] ?? [])
+          .map((id) => assignmentsById[id])
+          .filter((a): a is Assignment => Boolean(a))
+          .filter((a) => a.status === 'pending' || a.status === 'in_progress');
+        if (pending.length > 0) { found = pending[0]!; break; }
+      }
+      map[student.id] = found;
+    }
+    return map;
+  }, [visible, nextSessionByStudent, sessionsByStudent, sessionsById, assignmentsBySession, assignmentsById, today]);
+
   const columns: Column<Student>[] = [
     { id: 'name', header: 'Name', flex: 2, render: (s) => <Text variant="bodyStrong">{s.name}</Text> },
     { id: 'grade', header: 'Grade', flex: 1, render: (s) => <Text color="textMuted">{s.gradeLevel ?? '—'}</Text> },
     { id: 'rate', header: 'Rate', flex: 1, align: 'right', render: (s) => <Text color="textMuted">{formatCents(s.defaultHourlyRate)}/hr</Text> },
     { id: 'status', header: 'Status', flex: 1, align: 'right', render: (s) => <Badge label={s.status} tone={statusTone(s.status)} /> },
+    {
+      id: 'next_session',
+      header: 'Next Session',
+      flex: 2,
+      hideOnCompact: true,
+      render: (s) => {
+        const sess = nextSessionByStudent[s.id];
+        return sess
+          ? <Text color="textMuted">{formatIsoDate(sess.date)}</Text>
+          : <Text color="textMuted">Not scheduled</Text>;
+      },
+    },
+    {
+      id: 'next_assignment',
+      header: 'Next Assignment',
+      flex: 2,
+      hideOnCompact: true,
+      render: (s) => {
+        const val = nextAssignmentByStudent[s.id];
+        if (val === undefined || val === 'no_session') return <Text color="textMuted">Not scheduled</Text>;
+        if (val === null) return <Text color="danger">Not assigned</Text>;
+        return <Text color="textMuted">{val.title}</Text>;
+      },
+    },
   ];
 
   const maxWidth = select({ compact: 9999, expanded: 1080 });
@@ -129,7 +210,7 @@ export const StudentsListScreen = ({ navigation }: Props) => {
             keyExtractor={(s) => s.id}
             onRowPress={(s) => navigation.navigate('StudentDetail', { studentId: s.id })}
             emptyTitle={query ? 'No matches' : 'No students yet'}
-            emptyDescription={query ? 'Try a different search.' : 'Add your first student to get started.'}
+            emptyDescription={query ? 'Try a different search.' : 'Add your first student — the dance floor awaits.'}
           />
         )}
       </VStack>
