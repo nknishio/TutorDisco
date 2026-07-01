@@ -182,6 +182,7 @@ export const StudentsListScreen = ({ navigation }: Props) => {
                 size="sm"
                 onPress={() => setShowArchived((v) => !v)}
               />
+              <Button label="Settings" variant="ghost" size="sm" onPress={() => navigation.navigate('Settings')} />
               <Button label="Templates" variant="ghost" size="sm" onPress={() => navigation.navigate('Templates')} />
               <Button label="Revenue" variant="ghost" size="sm" onPress={() => navigation.navigate('RevenueDashboard')} />
               <Button label="Payments" variant="secondary" size="sm" onPress={() => navigation.navigate('Payments')} />

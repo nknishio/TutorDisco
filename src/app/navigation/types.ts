@@ -14,6 +14,7 @@ export type RootStackParamList = {
   Payments: undefined;
   RevenueDashboard: undefined;
   Templates: undefined;
+  Settings: undefined;
 };
 
 declare global {

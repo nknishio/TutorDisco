@@ -46,6 +46,22 @@ export const getRepositories = (): Repositories => {
   return container.repositories;
 };
 
+/** Access the raw database client (e.g. for backup/restore). Throws if called before init. */
+export const getDb = (): import('../../data').DatabaseClient => {
+  if (!container) {
+    throw new Error('Container not initialized — call initContainer() at startup first.');
+  }
+  return container.db;
+};
+
+/** Current schema version after migrations. Throws if called before init. */
+export const getSchemaVersion = (): number => {
+  if (!container) {
+    throw new Error('Container not initialized — call initContainer() at startup first.');
+  }
+  return container.schemaVersion;
+};
+
 /** Test seam: inject a prebuilt data layer (e.g. backed by an in-memory client). */
 export const setContainer = (dataLayer: DataLayer): void => {
   container = dataLayer;

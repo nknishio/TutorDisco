@@ -12,6 +12,7 @@ import { SessionDetailScreen } from '../../features/sessions/screens/SessionDeta
 import { PaymentsScreen } from '../../features/payments/screens/PaymentsScreen';
 import { RevenueDashboardScreen } from '../../features/payments/screens/RevenueDashboardScreen';
 import { TemplatesScreen } from '../../features/templates/screens/TemplatesScreen';
+import { SettingsScreen } from '../../features/settings/screens/SettingsScreen';
 import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -26,6 +27,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       Payments: 'payments',
       RevenueDashboard: 'revenue',
       Templates: 'templates',
+      Settings: 'settings',
     },
   },
 };
@@ -73,6 +75,11 @@ export const RootNavigator = () => {
           name="Templates"
           component={TemplatesScreen}
           options={{ title: 'Templates' }}
+        />
+        <Stack.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{ title: 'Settings' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
