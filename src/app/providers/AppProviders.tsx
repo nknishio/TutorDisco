@@ -10,14 +10,18 @@ import React, { type ReactNode } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '../../shared/theme';
 import { ErrorBoundary } from '../../shared/ui/feedback';
+import { useSettingsStore } from '../../store/settingsStore';
 import { AuthGate } from './AuthGate';
 
-export const AppProviders = ({ children }: { children: ReactNode }) => (
-  <ErrorBoundary>
-    <SafeAreaProvider>
-      <ThemeProvider preference="system">
-        <AuthGate>{children}</AuthGate>
-      </ThemeProvider>
-    </SafeAreaProvider>
-  </ErrorBoundary>
-);
+export const AppProviders = ({ children }: { children: ReactNode }) => {
+  const theme = useSettingsStore((s) => s.theme);
+  return (
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <ThemeProvider preference={theme}>
+          <AuthGate>{children}</AuthGate>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
+  );
+};

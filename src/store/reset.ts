@@ -25,6 +25,7 @@ export const resetAllStores = (): void => {
   useSettingsStore.setState({
     settings: null,
     satMode: false,
+    theme: 'system',
     defaultChecklistItems: [],
     defaultCalendarAlerts: [],
     status: 'idle',

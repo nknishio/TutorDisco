@@ -4,13 +4,14 @@
  */
 import { create } from 'zustand';
 import { getRepositories } from '../app/di/container';
-import type { AppSettings } from '../domain/types';
+import type { AppSettings, ThemePreference } from '../domain/types';
 
 type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 interface SettingsState {
   settings: AppSettings | null;
   satMode: boolean;
+  theme: ThemePreference;
   /** App-wide default checklist items offered when creating a session. */
   defaultChecklistItems: string[];
   /** App-wide default calendar reminders (minutes before start) for new sessions. */
@@ -20,6 +21,7 @@ interface SettingsState {
 
   load: () => Promise<void>;
   setSatMode: (on: boolean) => Promise<void>;
+  setTheme: (preference: ThemePreference) => Promise<void>;
   setDefaultChecklistItems: (items: readonly string[]) => Promise<void>;
   setDefaultCalendarAlerts: (alerts: readonly number[]) => Promise<void>;
 }
@@ -27,6 +29,7 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>((set) => ({
   settings: null,
   satMode: false,
+  theme: 'system',
   defaultChecklistItems: [],
   defaultCalendarAlerts: [],
   status: 'idle',
@@ -39,6 +42,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       set({
         settings,
         satMode: settings.satMode,
+        theme: settings.theme,
         defaultChecklistItems: [...settings.defaultChecklistItems],
         defaultCalendarAlerts: [...settings.defaultCalendarAlerts],
         status: 'ready',
@@ -54,6 +58,13 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     const res = await getRepositories().settings.update({ satMode: on });
     if (res.ok) set({ settings: res.value, satMode: res.value.satMode });
     else set((s) => ({ satMode: s.settings?.satMode ?? false, error: res.error.message }));
+  },
+
+  setTheme: async (preference) => {
+    set({ theme: preference });
+    const res = await getRepositories().settings.update({ theme: preference });
+    if (res.ok) set({ settings: res.value, theme: res.value.theme });
+    else set((s) => ({ theme: s.settings?.theme ?? 'system', error: res.error.message }));
   },
 
   setDefaultChecklistItems: async (items) => {
