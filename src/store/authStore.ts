@@ -11,8 +11,20 @@ import { reinitContainer } from '../app/di/container';
 import * as accounts from '../auth/accountsDb';
 import type { RegisterInput } from '../auth/accountsDb';
 import { resetAllStores } from './reset';
+import { err } from '../shared/utils/result';
 
 type AuthStatus = 'initializing' | 'unauthenticated' | 'authenticated';
+
+/**
+ * expo-sqlite's web VFS (OPFS) can only be held open by one tab at a time.
+ * Opening/reinitializing the DB from a second tab throws this from the SQLite
+ * worker instead of a friendly, catchable error, so we detect it by message.
+ */
+const isMultiTabVfsError = (e: unknown): boolean =>
+  e instanceof Error && /VFS state/i.test(e.message);
+
+const MULTI_TAB_MESSAGE =
+  'TutorDisco is already open in another tab. Please only use one tab of this app at a time — switch to that tab, or close all tabs and open a new one.';
 
 interface AuthState {
   status: AuthStatus;
@@ -53,21 +65,37 @@ export const useAuthStore = create<AuthState>((set) => {
         set({
           status: 'unauthenticated',
           currentAccount: null,
-          error: e instanceof Error ? e.message : String(e),
+          error: isMultiTabVfsError(e)
+            ? MULTI_TAB_MESSAGE
+            : e instanceof Error
+              ? e.message
+              : String(e),
         });
       }
     },
 
     register: async (input) => {
       const res = await accounts.createAccount(input);
-      if (res.ok) await activate(res.value);
-      return res;
+      if (!res.ok) return res;
+      try {
+        await activate(res.value);
+        return res;
+      } catch (e) {
+        if (isMultiTabVfsError(e)) return err('conflict', MULTI_TAB_MESSAGE, e);
+        throw e;
+      }
     },
 
     login: async (username, password) => {
       const res = await accounts.authenticate(username, password);
-      if (res.ok) await activate(res.value);
-      return res;
+      if (!res.ok) return res;
+      try {
+        await activate(res.value);
+        return res;
+      } catch (e) {
+        if (isMultiTabVfsError(e)) return err('conflict', MULTI_TAB_MESSAGE, e);
+        throw e;
+      }
     },
 
     logout: async () => {
