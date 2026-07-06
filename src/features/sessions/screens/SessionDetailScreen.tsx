@@ -219,6 +219,7 @@ export const SessionDetailScreen = ({ route }: Props) => {
         visible={assignmentModal.open}
         onClose={() => setAssignmentModal({ open: false })}
         sessionId={sessionId}
+        studentId={studentId}
         assignment={assignmentModal.assignment}
       />
     </ScrollView>
