@@ -40,7 +40,7 @@ export const LoginScreen = ({ onSwitchToRegister }: LoginScreenProps) => {
       keyboardShouldPersistTaps="handled"
     >
       <View style={{ width: '100%', maxWidth: 400 }}>
-        <Card title="Sign in" subtitle="TutorDisco">
+        <Card title="Sign in" subtitle="TutorDisco (disco — Latin for “I learn”)">
           <VStack gap={theme.space.lg}>
             {error ? <Text color="danger">{error}</Text> : null}
             <TextField
@@ -59,11 +59,12 @@ export const LoginScreen = ({ onSwitchToRegister }: LoginScreenProps) => {
               autoCapitalize="none"
             />
             <Button label="Sign in" variant="primary" fullWidth onPress={onSubmit} loading={submitting} />
-            <Button label="Create an account" variant="ghost" fullWidth onPress={onSwitchToRegister} disabled={submitting} />
+            <Button label="Create a profile" variant="ghost" fullWidth onPress={onSwitchToRegister} disabled={submitting} />
           </VStack>
         </Card>
         <Text variant="caption" color="textSubtle" style={{ textAlign: 'center', marginTop: theme.space.md }}>
-          disco — Latin for “I learn”
+          Note: your information is all stored locally, and you are simply creating different profiles. Only
+          open one tab at a time on your device.
         </Text>
       </View>
     </ScrollView>
