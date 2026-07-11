@@ -4,7 +4,12 @@
  */
 import { create } from 'zustand';
 import { getRepositories } from '../app/di/container';
-import type { AppSettings, ThemePreference } from '../domain/types';
+import type {
+  AppSettings,
+  StudentSortDir,
+  StudentSortKey,
+  ThemePreference,
+} from '../domain/types';
 
 type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -16,6 +21,14 @@ interface SettingsState {
   defaultChecklistItems: string[];
   /** App-wide default calendar reminders (minutes before start) for new sessions. */
   defaultCalendarAlerts: number[];
+  /** Active students-list sort key. */
+  studentSortKey: StudentSortKey;
+  /** Direction applied to the active students-list sort key. */
+  studentSortDir: StudentSortDir;
+  /** Hand-arranged custom student order (student ids). Preserved across sort changes. */
+  studentCustomOrder: string[];
+  /** Hand-arranged email-template order (template ids). Drives Templates + email dropdown. */
+  emailTemplateOrder: string[];
   status: LoadStatus;
   error: string | null;
 
@@ -24,6 +37,9 @@ interface SettingsState {
   setTheme: (preference: ThemePreference) => Promise<void>;
   setDefaultChecklistItems: (items: readonly string[]) => Promise<void>;
   setDefaultCalendarAlerts: (alerts: readonly number[]) => Promise<void>;
+  setStudentSort: (key: StudentSortKey, dir: StudentSortDir) => Promise<void>;
+  setStudentCustomOrder: (ids: readonly string[]) => Promise<void>;
+  setEmailTemplateOrder: (ids: readonly string[]) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -32,6 +48,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   theme: 'system',
   defaultChecklistItems: [],
   defaultCalendarAlerts: [],
+  studentSortKey: 'custom',
+  studentSortDir: 'asc',
+  studentCustomOrder: [],
+  emailTemplateOrder: [],
   status: 'idle',
   error: null,
 
@@ -45,6 +65,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         theme: settings.theme,
         defaultChecklistItems: [...settings.defaultChecklistItems],
         defaultCalendarAlerts: [...settings.defaultCalendarAlerts],
+        studentSortKey: settings.studentSortKey,
+        studentSortDir: settings.studentSortDir,
+        studentCustomOrder: [...settings.studentCustomOrder],
+        emailTemplateOrder: [...settings.emailTemplateOrder],
         status: 'ready',
       });
     } catch (e) {
@@ -92,6 +116,51 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     } else {
       set((s) => ({
         defaultCalendarAlerts: [...(s.settings?.defaultCalendarAlerts ?? [])],
+        error: res.error.message,
+      }));
+    }
+  },
+
+  setStudentSort: async (key, dir) => {
+    // Optimistic — reflect immediately, reconcile from the persisted row.
+    set({ studentSortKey: key, studentSortDir: dir });
+    const res = await getRepositories().settings.update({ studentSortKey: key, studentSortDir: dir });
+    if (res.ok) {
+      set({ settings: res.value, studentSortKey: res.value.studentSortKey, studentSortDir: res.value.studentSortDir });
+    } else {
+      set((s) => ({
+        studentSortKey: s.settings?.studentSortKey ?? 'custom',
+        studentSortDir: s.settings?.studentSortDir ?? 'asc',
+        error: res.error.message,
+      }));
+    }
+  },
+
+  setStudentCustomOrder: async (ids) => {
+    const next = [...ids];
+    // Optimistic — reflect immediately, reconcile from the persisted row.
+    set({ studentCustomOrder: next });
+    const res = await getRepositories().settings.update({ studentCustomOrder: next });
+    if (res.ok) {
+      set({ settings: res.value, studentCustomOrder: [...res.value.studentCustomOrder] });
+    } else {
+      set((s) => ({
+        studentCustomOrder: [...(s.settings?.studentCustomOrder ?? [])],
+        error: res.error.message,
+      }));
+    }
+  },
+
+  setEmailTemplateOrder: async (ids) => {
+    const next = [...ids];
+    // Optimistic — reflect immediately, reconcile from the persisted row.
+    set({ emailTemplateOrder: next });
+    const res = await getRepositories().settings.update({ emailTemplateOrder: next });
+    if (res.ok) {
+      set({ settings: res.value, emailTemplateOrder: [...res.value.emailTemplateOrder] });
+    } else {
+      set((s) => ({
+        emailTemplateOrder: [...(s.settings?.emailTemplateOrder ?? [])],
         error: res.error.message,
       }));
     }

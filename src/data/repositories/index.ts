@@ -221,6 +221,10 @@ class SqliteSettingsRepository implements SettingsRepository {
         'Note where we left off',
       ],
       defaultCalendarAlerts: [60],
+      studentSortKey: 'custom',
+      studentSortDir: 'asc',
+      studentCustomOrder: [],
+      emailTemplateOrder: [],
       createdAt: now,
       updatedAt: now,
     };

@@ -8,6 +8,22 @@ import type { Cents, CurrencyCode, EpochMillis, Timezone } from './common';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 
+/**
+ * How the students list is ordered. `custom` is a hand-arranged order the user drags
+ * into place (persisted in `studentCustomOrder`); the rest are derived from student
+ * data. `custom` survives switching to another key and back.
+ */
+export type StudentSortKey =
+  | 'name'
+  | 'nextSession'
+  | 'firstSession'
+  | 'rate'
+  | 'status'
+  | 'custom';
+
+/** Sort direction. `asc` is each key's natural order; `desc` reverses it. */
+export type StudentSortDir = 'asc' | 'desc';
+
 export interface AppSettings {
   /** Singleton; the data layer enforces a single settings row. */
   readonly id: 'singleton';
@@ -27,6 +43,23 @@ export interface AppSettings {
    * (0 = at the time of the event).
    */
   readonly defaultCalendarAlerts: readonly number[];
+  /** Which key the students list is sorted by. */
+  readonly studentSortKey: StudentSortKey;
+  /** Direction applied to the active sort key. */
+  readonly studentSortDir: StudentSortDir;
+  /**
+   * The hand-arranged custom order, as an ordered list of student ids. Persisted
+   * independently of `studentSortKey` so it is preserved when the user switches to
+   * another sort and back. Ids no longer present are ignored; students missing from
+   * the list fall to the top (newest-added-first).
+   */
+  readonly studentCustomOrder: readonly string[];
+  /**
+   * Hand-arranged order of email templates, as an ordered list of template ids. Drives
+   * the Templates screen and the template dropdown when generating a session email.
+   * Ids no longer present are ignored; templates missing from the list fall to the top.
+   */
+  readonly emailTemplateOrder: readonly string[];
   readonly createdAt: EpochMillis;
   readonly updatedAt: EpochMillis;
 }
@@ -42,5 +75,9 @@ export type SettingsPatch = Partial<
     | 'timezone'
     | 'defaultChecklistItems'
     | 'defaultCalendarAlerts'
+    | 'studentSortKey'
+    | 'studentSortDir'
+    | 'studentCustomOrder'
+    | 'emailTemplateOrder'
   >
 >;

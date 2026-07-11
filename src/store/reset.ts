@@ -28,6 +28,10 @@ export const resetAllStores = (): void => {
     theme: 'system',
     defaultChecklistItems: [],
     defaultCalendarAlerts: [],
+    studentSortKey: 'custom',
+    studentSortDir: 'asc',
+    studentCustomOrder: [],
+    emailTemplateOrder: [],
     status: 'idle',
     error: null,
   });

@@ -20,7 +20,12 @@ import type { CalendarEventLink, CalendarProviderId } from '../../domain/types/c
 import type { ChecklistItem } from '../../domain/types/checklist';
 import type { EmailTemplate } from '../../domain/types/emailTemplate';
 import type { Payment, PaymentStatus } from '../../domain/types/payment';
-import type { AppSettings, ThemePreference } from '../../domain/types/settings';
+import type {
+  AppSettings,
+  StudentSortDir,
+  StudentSortKey,
+  ThemePreference,
+} from '../../domain/types/settings';
 import type { CurrencyCode, Timezone } from '../../domain/types/common';
 import type {
   SatScore,
@@ -88,6 +93,22 @@ const asNumberArray = (v: Cell): number[] => {
     return [];
   }
 };
+
+const STUDENT_SORT_KEYS: readonly StudentSortKey[] = [
+  'name',
+  'nextSession',
+  'firstSession',
+  'rate',
+  'status',
+  'custom',
+];
+
+/** Parse the persisted sort key, falling back to `custom` for unknown/legacy values. */
+const asStudentSortKey = (v: Cell): StudentSortKey =>
+  STUDENT_SORT_KEYS.includes(v as StudentSortKey) ? (v as StudentSortKey) : 'custom';
+
+/** Parse the persisted sort direction, falling back to `asc`. */
+const asStudentSortDir = (v: Cell): StudentSortDir => (v === 'desc' ? 'desc' : 'asc');
 
 // ---------------------------------------------------------------------------
 // Shared sync-metadata mapping
@@ -281,6 +302,10 @@ export const settingsMapper: RowMapper<AppSettings> = {
     timezone: s.timezone,
     default_checklist_items: JSON.stringify(s.defaultChecklistItems ?? []),
     default_calendar_alerts: JSON.stringify(s.defaultCalendarAlerts ?? []),
+    student_sort_key: s.studentSortKey,
+    student_sort_dir: s.studentSortDir,
+    student_custom_order: JSON.stringify(s.studentCustomOrder ?? []),
+    email_template_order: JSON.stringify(s.emailTemplateOrder ?? []),
     created_at: s.createdAt,
     updated_at: s.updatedAt,
   }),
@@ -294,6 +319,10 @@ export const settingsMapper: RowMapper<AppSettings> = {
     timezone: asStringOrNull(row.timezone) as Timezone | null,
     defaultChecklistItems: asStringArray(row.default_checklist_items),
     defaultCalendarAlerts: asNumberArray(row.default_calendar_alerts),
+    studentSortKey: asStudentSortKey(row.student_sort_key),
+    studentSortDir: asStudentSortDir(row.student_sort_dir),
+    studentCustomOrder: asStringArray(row.student_custom_order),
+    emailTemplateOrder: asStringArray(row.email_template_order),
     createdAt: asNumber(row.created_at) as EpochMillis,
     updatedAt: asNumber(row.updated_at) as EpochMillis,
   }),
