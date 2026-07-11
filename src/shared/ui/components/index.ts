@@ -10,3 +10,4 @@ export { TimePicker, type TimePickerProps } from './TimePicker';
 export { TimeField, type TimeFieldProps } from './TimeField';
 export { Switch, type SwitchProps } from './Switch';
 export { DataTable, type DataTableProps, type Column } from './Table';
+export { DraggableList, type DraggableListProps } from './DraggableList';
