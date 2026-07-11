@@ -6,9 +6,10 @@ import React, { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../../shared/theme';
-import { Button, Card, HStack, Spinner, Text, VStack } from '../../../shared/ui';
+import { Button, Card, DraggableList, HStack, Spinner, Text, VStack } from '../../../shared/ui';
 import type { EmailTemplate } from '../../../domain/types';
-import { useTemplatesStore } from '../../../store';
+import { buildCustomBase } from '../../../domain/services/customOrder';
+import { useSettingsStore, useTemplatesStore } from '../../../store';
 import type { RootStackParamList } from '../../../app/navigation/types';
 import { TemplateFormModal } from '../components/TemplateFormModal';
 
@@ -28,14 +29,25 @@ export const TemplatesScreen = (_props: Props) => {
   const load = useTemplatesStore((s) => s.load);
   const remove = useTemplatesStore((s) => s.remove);
 
+  const emailTemplateOrder = useSettingsStore((s) => s.emailTemplateOrder);
+  const setEmailTemplateOrder = useSettingsStore((s) => s.setEmailTemplateOrder);
+  const loadSettings = useSettingsStore((s) => s.load);
+
   const [form, setForm] = useState<{ open: boolean; template?: EmailTemplate }>({ open: false });
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadSettings();
+  }, [load, loadSettings]);
 
-  const templates = order.map((id) => byId[id]).filter((t): t is EmailTemplate => Boolean(t));
+  // Apply the saved custom order; newly-created templates surface at the top.
+  const templates = buildCustomBase(order, emailTemplateOrder)
+    .map((id) => byId[id])
+    .filter((t): t is EmailTemplate => Boolean(t));
   const loading = status === 'loading' && templates.length === 0;
+
+  // Every template is shown here, so the reported order is the full order to persist.
+  const handleReorder = (keys: string[]) => void setEmailTemplateOrder(keys);
 
   return (
     <ScrollView
@@ -56,20 +68,25 @@ export const TemplatesScreen = (_props: Props) => {
             <Text color="textMuted">No templates yet. Create one to get started.</Text>
           </Card>
         ) : (
-          templates.map((t) => (
-            <Card
-              key={t.id}
-              title={t.title}
-              headerAction={
-                <HStack gap={theme.space.sm}>
-                  <Button label="Edit" variant="secondary" size="sm" onPress={() => setForm({ open: true, template: t })} />
-                  <Button label="Delete" variant="ghost" size="sm" onPress={() => void remove(t.id)} />
-                </HStack>
-              }
-            >
-              <Text color="textMuted">{snippet(t.content)}</Text>
-            </Card>
-          ))
+          <DraggableList
+            data={templates}
+            keyExtractor={(t) => t.id}
+            onReorder={handleReorder}
+            renderItem={(t, dragHandle) => (
+              <Card
+                title={t.title}
+                headerAction={
+                  <HStack gap={theme.space.sm} align="center">
+                    {dragHandle}
+                    <Button label="Edit" variant="secondary" size="sm" onPress={() => setForm({ open: true, template: t })} />
+                    <Button label="Delete" variant="ghost" size="sm" onPress={() => void remove(t.id)} />
+                  </HStack>
+                }
+              >
+                <Text color="textMuted">{snippet(t.content)}</Text>
+              </Card>
+            )}
+          />
         )}
 
         <View style={{ height: theme.space.xl }} />

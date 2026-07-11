@@ -10,10 +10,12 @@ import { useTheme } from '../../../shared/theme';
 import { Button, HStack, Modal, Select, TextField, Text, VStack } from '../../../shared/ui';
 import type { Assignment, Session, SessionId, StudentId } from '../../../domain/types';
 import { renderTemplate } from '../../../domain/services/templates';
+import { buildCustomBase } from '../../../domain/services/customOrder';
 import { formatIsoDate, formatIsoTime } from '../../../shared/utils/datetime';
 import {
   useAssignmentsStore,
   useSessionsStore,
+  useSettingsStore,
   useStudentsStore,
   useTemplatesStore,
 } from '../../../store';
@@ -34,6 +36,8 @@ export const GenerateEmailModal = ({ visible, onClose, session, studentId }: Gen
   const templatesById = useTemplatesStore((s) => s.byId);
   const templateOrder = useTemplatesStore((s) => s.order);
   const loadTemplates = useTemplatesStore((s) => s.load);
+  const emailTemplateOrder = useSettingsStore((s) => s.emailTemplateOrder);
+  const loadSettings = useSettingsStore((s) => s.load);
 
   const student = useStudentsStore((s) => s.byId[studentId]);
   const loadStudents = useStudentsStore((s) => s.load);
@@ -52,12 +56,16 @@ export const GenerateEmailModal = ({ visible, onClose, session, studentId }: Gen
   useEffect(() => {
     if (!visible) return;
     void loadTemplates();
+    void loadSettings();
     if (!student) void loadStudents();
     void loadAssignments(session.id);
     setCopied(false);
-  }, [visible, student, loadTemplates, loadStudents, loadAssignments, session.id]);
+  }, [visible, student, loadTemplates, loadSettings, loadStudents, loadAssignments, session.id]);
 
-  const templates = templateOrder.map((id) => templatesById[id]).filter(Boolean);
+  // Follow the same hand-arranged order the Templates screen uses.
+  const templates = buildCustomBase(templateOrder, emailTemplateOrder)
+    .map((id) => templatesById[id])
+    .filter(Boolean);
 
   // Default to the first template once templates are loaded.
   useEffect(() => {
