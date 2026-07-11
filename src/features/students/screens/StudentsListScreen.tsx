@@ -12,13 +12,21 @@ import {
   Button,
   Column,
   DataTable,
+  DraggableList,
   HStack,
+  Select,
   Spinner,
   Text,
   TextField,
   VStack,
 } from '../../../shared/ui';
 import type { Assignment, Session, SessionId, Student, StudentStatus } from '../../../domain/types';
+import {
+  buildCustomBase,
+  mergeReorder,
+  sortStudents,
+  STUDENT_SORT_OPTIONS,
+} from '../../../domain/services/studentSort';
 import { formatCents } from '../../../shared/utils/money';
 import { formatIsoTime, todayIsoDate } from '../../../shared/utils/datetime';
 
@@ -26,7 +34,13 @@ const formatSessionDateTime = (date: string, time: string): string => {
   const [y, m, d] = date.split('-').map(Number);
   return `${m}/${d}/${String(y).slice(-2)} @ ${formatIsoTime(time)}`;
 };
-import { useAuthStore, useStudentsStore, useSessionsStore, useAssignmentsStore } from '../../../store';
+import {
+  useAuthStore,
+  useStudentsStore,
+  useSessionsStore,
+  useAssignmentsStore,
+  useSettingsStore,
+} from '../../../store';
 import type { RootStackParamList } from '../../../app/navigation/types';
 import { StudentFormModal } from '../components/StudentFormModal';
 
@@ -57,12 +71,20 @@ export const StudentsListScreen = ({ navigation }: Props) => {
   const assignmentsById = useAssignmentsStore((s) => s.byId);
   const loadForSessions = useAssignmentsStore((s) => s.loadForSessions);
 
+  const sortKey = useSettingsStore((s) => s.studentSortKey);
+  const sortDir = useSettingsStore((s) => s.studentSortDir);
+  const customOrder = useSettingsStore((s) => s.studentCustomOrder);
+  const setStudentSort = useSettingsStore((s) => s.setStudentSort);
+  const setStudentCustomOrder = useSettingsStore((s) => s.setStudentCustomOrder);
+  const loadSettings = useSettingsStore((s) => s.load);
+
   const [showArchived, setShowArchived] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadSettings();
+  }, [load, loadSettings]);
 
   useEffect(() => {
     void (async () => {
@@ -126,6 +148,45 @@ export const StudentsListScreen = ({ navigation }: Props) => {
     }
     return map;
   }, [visible, nextSessionByStudent, sessionsByStudent, sessionsById, assignmentsBySession, assignmentsById, today]);
+
+  // Earliest session ever (any status), used by the "First session" sort key.
+  const firstSessionByStudent = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    for (const student of visible) {
+      const first = (sessionsByStudent[student.id] ?? [])
+        .map((id) => sessionsById[id])
+        .filter((s): s is Session => Boolean(s))
+        .map((s) => `${s.date}${s.startTime}`)
+        .sort((a, b) => a.localeCompare(b))[0];
+      map[student.id] = first ?? null;
+    }
+    return map;
+  }, [visible, sessionsByStudent, sessionsById]);
+
+  // Full custom arrangement (all students, newest-added first for any not yet placed).
+  const customBase = useMemo(() => buildCustomBase(order, customOrder), [order, customOrder]);
+
+  const sorted = useMemo(
+    () =>
+      sortStudents(visible, sortKey, sortDir, {
+        nextSessionKey: (id) => {
+          const sess = nextSessionByStudent[id];
+          return sess ? `${sess.date}${sess.startTime}` : null;
+        },
+        firstSessionKey: (id) => firstSessionByStudent[id] ?? null,
+        customBase,
+      }),
+    [visible, sortKey, sortDir, nextSessionByStudent, firstSessionByStudent, customBase],
+  );
+
+  // Custom-order drag is only meaningful over the unfiltered list; a search narrows it.
+  const canDrag = sortKey === 'custom' && query.trim() === '';
+
+  const handleReorder = (visibleKeys: string[]) => {
+    // Keys arrive top-to-bottom (display order); convert back to the stored asc base.
+    const asBase = sortDir === 'desc' ? [...visibleKeys].reverse() : visibleKeys;
+    void setStudentCustomOrder(mergeReorder(customBase, asBase));
+  };
 
   const columns: Column<Student>[] = [
     { id: 'name', header: 'Name', flex: 2, render: (s) => <Text variant="bodyStrong">{s.name}</Text> },
@@ -206,12 +267,45 @@ export const StudentsListScreen = ({ navigation }: Props) => {
           );
         })()}
 
+        <HStack gap={theme.space.md} align="center" wrap>
+          <Text variant="label" color="textMuted">
+            Sort by
+          </Text>
+          <View style={{ minWidth: 200, maxWidth: 260 }}>
+            <Select
+              value={sortKey}
+              options={STUDENT_SORT_OPTIONS}
+              onChange={(k) => void setStudentSort(k, sortDir)}
+              testID="student-sort-select"
+            />
+          </View>
+          <Button
+            label={sortDir === 'asc' ? '↑ Ascending' : '↓ Descending'}
+            variant="secondary"
+            size="sm"
+            onPress={() => void setStudentSort(sortKey, sortDir === 'asc' ? 'desc' : 'asc')}
+          />
+          {sortKey === 'custom' && query.trim() !== '' ? (
+            <Text variant="caption" color="textMuted">
+              Clear search to drag-reorder
+            </Text>
+          ) : null}
+        </HStack>
+
         {loading ? (
           <Spinner fill />
+        ) : canDrag && sorted.length > 0 ? (
+          <DraggableList
+            columns={columns}
+            data={sorted}
+            keyExtractor={(s) => s.id}
+            onReorder={handleReorder}
+            onRowPress={(s) => navigation.navigate('StudentDetail', { studentId: s.id })}
+          />
         ) : (
           <DataTable
             columns={columns}
-            data={visible}
+            data={sorted}
             keyExtractor={(s) => s.id}
             onRowPress={(s) => navigation.navigate('StudentDetail', { studentId: s.id })}
             emptyTitle={query ? 'No matches' : 'No students yet'}
