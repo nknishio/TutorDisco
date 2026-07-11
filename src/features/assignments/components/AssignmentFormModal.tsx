@@ -12,13 +12,14 @@ import type {
   CreateInput,
   IsoDate,
   SessionId,
+  Student,
   StudentId,
 } from '../../../domain/types';
 import { ASSIGNMENT_STATUSES } from '../../../domain/types';
 import { isIsoDate } from '../../../shared/utils/time';
 import { formatIsoDate } from '../../../shared/utils/datetime';
 import { useFormSubmit } from '../../../shared/hooks';
-import { useAssignmentsStore, useSessionsStore } from '../../../store';
+import { useAssignmentsStore, useSessionsStore, useStudentsStore } from '../../../store';
 
 export interface AssignmentFormModalProps {
   visible: boolean;
@@ -40,16 +41,26 @@ export const AssignmentFormModal = ({ visible, onClose, sessionId, studentId, as
   const isEdit = Boolean(assignment);
   const create = useAssignmentsStore((s) => s.create);
   const update = useAssignmentsStore((s) => s.update);
+  const remove = useAssignmentsStore((s) => s.remove);
 
   const [title, setTitle] = useState(assignment?.title ?? '');
   const [details, setDetails] = useState(assignment?.details ?? '');
   const [dueDate, setDueDate] = useState(assignment?.dueDate ?? '');
   const [status, setStatus] = useState<AssignmentStatus>(assignment?.status ?? 'pending');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  // Whose previous assignments the sidebar shows — defaults to this session's student,
+  // but can be switched to browse (and reuse) another student's assignments.
+  const [browseStudentId, setBrowseStudentId] = useState<StudentId | undefined>(studentId);
   const { submitting, error: formError, setError: setFormError, submit } = useFormSubmit();
 
-  // Previous assignments: gather this student's assignments across all their sessions.
+  // Student picker for the previous-assignments sidebar.
+  const studentsById = useStudentsStore((s) => s.byId);
+  const studentOrder = useStudentsStore((s) => s.order);
+  const loadStudents = useStudentsStore((s) => s.load);
+
+  // Previous assignments: gather the browsed student's assignments across their sessions.
   const sessionsById = useSessionsStore((s) => s.byId);
-  const sessionIdsForStudent = useSessionsStore((s) => (studentId ? s.byStudent[studentId] : undefined));
+  const sessionIdsForStudent = useSessionsStore((s) => (browseStudentId ? s.byStudent[browseStudentId] : undefined));
   const loadSessions = useSessionsStore((s) => s.loadByStudent);
   const assignmentsById = useAssignmentsStore((s) => s.byId);
   const assignmentsBySession = useAssignmentsStore((s) => s.bySession);
@@ -64,25 +75,32 @@ export const AssignmentFormModal = ({ visible, onClose, sessionId, studentId, as
     setDetails(assignment?.details ?? '');
     setDueDate(assignment?.dueDate ?? '');
     setStatus(assignment?.status ?? 'pending');
+    setConfirmDelete(false);
+    setBrowseStudentId(studentId);
     setFormError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, assignment]);
+  }, [visible, assignment, studentId]);
 
-  // On open, make sure this student's sessions and their assignments are loaded
-  // (sessions other than the current one may not be in the cache yet), so the
-  // previous-assignments panel is populated.
+  // On open, load the student list so the picker is populated.
   useEffect(() => {
-    if (!visible || !studentId) return;
+    if (visible) void loadStudents();
+  }, [visible, loadStudents]);
+
+  // Make sure the browsed student's sessions and their assignments are loaded (sessions
+  // other than the current one may not be cached yet), so the panel is populated. Runs
+  // again when the picker switches to a different student.
+  useEffect(() => {
+    if (!visible || !browseStudentId) return;
     void (async () => {
-      if (!sessionIdsForStudent) await loadSessions(studentId);
-      const ids = useSessionsStore.getState().byStudent[studentId] ?? [];
+      if (!sessionIdsForStudent) await loadSessions(browseStudentId);
+      const ids = useSessionsStore.getState().byStudent[browseStudentId] ?? [];
       await loadForSessions(ids as SessionId[]);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, studentId]);
+  }, [visible, browseStudentId]);
 
   const previousAssignments = useMemo(() => {
-    if (!studentId) return [];
+    if (!browseStudentId) return [];
     const ids = sessionIdsForStudent ?? [];
     const items: Assignment[] = [];
     for (const sid of ids) {
@@ -98,7 +116,7 @@ export const AssignmentFormModal = ({ visible, onClose, sessionId, studentId, as
       if (dx !== dy) return dy.localeCompare(dx);
       return (y.createdAt ?? 0) - (x.createdAt ?? 0);
     });
-  }, [studentId, sessionIdsForStudent, assignmentsBySession, assignmentsById, sessionsById, assignment?.id]);
+  }, [browseStudentId, sessionIdsForStudent, assignmentsBySession, assignmentsById, sessionsById, assignment?.id]);
 
   const usePrevious = (a: Assignment) => {
     setTitle(a.title);
@@ -127,6 +145,11 @@ export const AssignmentFormModal = ({ visible, onClose, sessionId, studentId, as
     );
   };
 
+  const onDelete = () => {
+    if (!assignment) return;
+    void submit(() => remove(assignment.id, sessionId), onClose);
+  };
+
   const formBlock = (
     <VStack gap={theme.space.lg} flex={isCompact ? undefined : 1}>
       {formError ? <Text color="danger">{formError}</Text> : null}
@@ -137,11 +160,34 @@ export const AssignmentFormModal = ({ visible, onClose, sessionId, studentId, as
     </VStack>
   );
 
+  const studentOptions = studentOrder
+    .map((id) => studentsById[id])
+    .filter((s): s is Student => Boolean(s))
+    .map((s) => ({ label: s.name, value: s.id }));
+
+  const viewingOther = browseStudentId !== studentId;
+
   const previousBlock = studentId ? (
     <VStack gap={theme.space.sm} style={isCompact ? undefined : { width: 320 }}>
-      <Text variant="bodyStrong">Previous assignments</Text>
+      <HStack justify="space-between" align="center" gap={theme.space.sm} wrap>
+        <Text variant="bodyStrong">Previous assignments</Text>
+        {studentOptions.length > 1 ? (
+          <View style={{ flexGrow: 1, minWidth: 150, maxWidth: 210 }}>
+            <Select
+              value={browseStudentId ?? null}
+              options={studentOptions}
+              onChange={(id) => setBrowseStudentId(id)}
+              testID="prev-assignments-student"
+            />
+          </View>
+        ) : null}
+      </HStack>
       {previousAssignments.length === 0 ? (
-        <Text color="textMuted" variant="caption">No previous assignments for this student.</Text>
+        <Text color="textMuted" variant="caption">
+          {viewingOther
+            ? `No assignments for ${studentsById[browseStudentId ?? '']?.name ?? 'this student'}.`
+            : 'No previous assignments for this student.'}
+        </Text>
       ) : (
         <View
           style={{
@@ -207,9 +253,24 @@ export const AssignmentFormModal = ({ visible, onClose, sessionId, studentId, as
       title={isEdit ? 'Edit assignment' : 'New assignment'}
       maxWidth={studentId && !isCompact ? 900 : 520}
       footer={
-        <HStack gap={theme.space.md} justify="flex-end">
-          <Button label="Cancel" variant="ghost" onPress={onClose} disabled={submitting} />
-          <Button label={isEdit ? 'Save' : 'Add'} variant="primary" onPress={onSubmit} loading={submitting} />
+        <HStack gap={theme.space.md} justify="space-between" align="center">
+          <View>
+            {isEdit ? (
+              confirmDelete ? (
+                <HStack gap={theme.space.xs} align="center">
+                  <Text variant="caption" color="danger">Delete?</Text>
+                  <Button label="Confirm" size="sm" variant="danger" onPress={onDelete} loading={submitting} />
+                  <Button label="Cancel" size="sm" variant="ghost" onPress={() => setConfirmDelete(false)} disabled={submitting} />
+                </HStack>
+              ) : (
+                <Button label="Delete" size="sm" variant="danger" onPress={() => setConfirmDelete(true)} disabled={submitting} />
+              )
+            ) : null}
+          </View>
+          <HStack gap={theme.space.md} justify="flex-end" align="center">
+            <Button label="Cancel" variant="ghost" onPress={onClose} disabled={submitting} />
+            <Button label={isEdit ? 'Save' : 'Add'} variant="primary" onPress={onSubmit} loading={submitting} />
+          </HStack>
         </HStack>
       }
     >
