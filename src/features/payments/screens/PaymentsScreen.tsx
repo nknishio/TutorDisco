@@ -23,7 +23,12 @@ import {
 } from '../../../shared/ui';
 import type { BadgeTone } from '../../../shared/ui';
 import type { Payment, PaymentStatus } from '../../../domain/types';
-import { paymentTotals } from '../../../domain/services/payments';
+import {
+  paymentTotals,
+  sortPayments,
+  type PaymentSort,
+  type PaymentSortColumn,
+} from '../../../domain/services/payments';
 import { formatCents } from '../../../shared/utils/money';
 import { formatIsoDate, todayIsoDate } from '../../../shared/utils/datetime';
 import { usePaymentsStore, useSessionsStore, useStudentsStore } from '../../../store';
@@ -58,6 +63,8 @@ export const PaymentsScreen = ({ navigation }: Props) => {
   const allSessions = useSessionsStore((s) => s.all);
 
   const [filter, setFilter] = useState<Filter>('all');
+  // Null = default order (pending on top, paid by received date, latest first).
+  const [sort, setSort] = useState<PaymentSort | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<Payment | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -86,6 +93,24 @@ export const PaymentsScreen = ({ navigation }: Props) => {
     const sess = sessionsById[p.sessionId];
     return sess ? formatIsoDate(sess.date) : '—';
   };
+  // Raw session date ('YYYY-MM-DD') for sorting, or null for ad-hoc / unresolved.
+  const sessionDateValue = (p: Payment): string | null =>
+    p.sessionId ? (sessionsById[p.sessionId]?.date ?? null) : null;
+
+  const sorted = useMemo(
+    () => sortPayments(visible, sort, { studentName, sessionDate: sessionDateValue }),
+    // studentName/sessionDateValue are pure over these caches.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visible, sort, studentsById, sessionsById],
+  );
+
+  const toggleSort = (columnId: string) => {
+    setSort((cur) =>
+      cur && cur.columnId === columnId
+        ? { columnId: cur.columnId, dir: cur.dir === 'desc' ? 'asc' : 'desc' }
+        : { columnId: columnId as PaymentSortColumn, dir: 'desc' },
+    );
+  };
 
   const onGenerate = async () => {
     setNotice(null);
@@ -107,11 +132,11 @@ export const PaymentsScreen = ({ navigation }: Props) => {
   };
 
   const columns: Column<Payment>[] = [
-    { id: 'student', header: 'Student', flex: 2, render: (p) => <Text variant="bodyStrong">{studentName(p)}</Text> },
-    { id: 'session', header: 'Session', flex: 2, render: (p) => <Text color="textMuted">{sessionDate(p)}</Text>, hideOnCompact: true },
-    { id: 'amount', header: 'Amount', flex: 1, align: 'right', render: (p) => <Text variant="bodyStrong">{formatCents(p.amount)}</Text> },
-    { id: 'status', header: 'Status', flex: 1, align: 'right', render: (p) => <Badge label={label(p.status)} tone={tone(p.status)} /> },
-    { id: 'received', header: 'Received', flex: 1, align: 'right', render: (p) => <Text color="textMuted">{p.receivedDate ? formatIsoDate(p.receivedDate) : '—'}</Text> },
+    { id: 'student', header: 'Student', flex: 2, sortable: true, render: (p) => <Text variant="bodyStrong">{studentName(p)}</Text> },
+    { id: 'session', header: 'Session', flex: 2, sortable: true, render: (p) => <Text color="textMuted">{sessionDate(p)}</Text>, hideOnCompact: true },
+    { id: 'amount', header: 'Amount', flex: 1, align: 'right', sortable: true, render: (p) => <Text variant="bodyStrong">{formatCents(p.amount)}</Text> },
+    { id: 'status', header: 'Status', flex: 1, align: 'right', sortable: true, render: (p) => <Badge label={label(p.status)} tone={tone(p.status)} /> },
+    { id: 'received', header: 'Received', flex: 1, align: 'right', sortable: true, render: (p) => <Text color="textMuted">{p.receivedDate ? formatIsoDate(p.receivedDate) : '—'}</Text> },
     {
       id: 'action',
       header: '',
@@ -188,8 +213,10 @@ export const PaymentsScreen = ({ navigation }: Props) => {
         ) : (
           <DataTable
             columns={columns}
-            data={visible}
+            data={sorted}
             keyExtractor={(p) => p.id}
+            sort={sort}
+            onToggleSort={toggleSort}
             onRowPress={(p) => setEditing(p)}
             emptyTitle={filter === 'all' ? 'No payments yet' : `No ${filter} payments`}
             emptyDescription="Add a payment or generate them from completed sessions."

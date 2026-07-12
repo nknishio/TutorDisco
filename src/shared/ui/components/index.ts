@@ -9,5 +9,5 @@ export { CalendarPicker, type CalendarPickerProps } from './CalendarPicker';
 export { TimePicker, type TimePickerProps } from './TimePicker';
 export { TimeField, type TimeFieldProps } from './TimeField';
 export { Switch, type SwitchProps } from './Switch';
-export { DataTable, type DataTableProps, type Column } from './Table';
+export { DataTable, type DataTableProps, type Column, type TableSort } from './Table';
 export { DraggableList, type DraggableListProps } from './DraggableList';

@@ -7,7 +7,7 @@
  * monthly collected revenue, and revenue per student. Money is integer cents.
  */
 import type { Cents, CreateInput, IsoDate, StudentId } from '../types/common';
-import type { Payment } from '../types/payment';
+import type { Payment, PaymentStatus } from '../types/payment';
 import type { Session } from '../types/session';
 import { sessionPaymentCents } from './earnings';
 
@@ -22,6 +22,76 @@ export const paymentForSession = (session: Session): CreateInput<Payment> => ({
   status: 'pending',
   receivedDate: null,
 });
+
+// ---------------------------------------------------------------------------
+// Sorting (payments table)
+// ---------------------------------------------------------------------------
+export type PaymentSortColumn = 'student' | 'session' | 'amount' | 'status' | 'received';
+
+export interface PaymentSort {
+  readonly columnId: PaymentSortColumn;
+  /** 'desc' = the first press (down arrow); 'asc' = reversed (up arrow). */
+  readonly dir: 'asc' | 'desc';
+}
+
+export interface PaymentSortAccessors {
+  /** Display name of the payment's student, for the Student column. */
+  studentName: (p: Payment) => string;
+  /** The covered session's date ('YYYY-MM-DD'), or null for ad-hoc payments. */
+  sessionDate: (p: Payment) => string | null;
+}
+
+/** Default table order: pending first, then overdue, then paid, then cancelled. */
+const STATUS_RANK: Record<PaymentStatus, number> = { pending: 0, overdue: 1, paid: 2, cancelled: 3 };
+
+/**
+ * Order payments for the table. When `sort` is null this is the default arrangement —
+ * unpaid on top (pending, then overdue) and paid sorted by received date, latest first.
+ * When a column sort is active, rows with no value for that column (ad-hoc session,
+ * unpaid received date) sink to the bottom in both directions. Returns a new array.
+ */
+export const sortPayments = (
+  payments: readonly Payment[],
+  sort: PaymentSort | null,
+  acc: PaymentSortAccessors,
+): Payment[] => {
+  if (!sort) {
+    return [...payments].sort((a, b) => {
+      const r = STATUS_RANK[a.status] - STATUS_RANK[b.status];
+      if (r !== 0) return r;
+      // Within the paid group: latest received first.
+      if (a.status === 'paid') return (b.receivedDate ?? '').localeCompare(a.receivedDate ?? '');
+      return 0; // stable for the rest
+    });
+  }
+
+  const missing = (p: Payment): boolean =>
+    (sort.columnId === 'session' && acc.sessionDate(p) == null) ||
+    (sort.columnId === 'received' && p.receivedDate == null);
+
+  const present: Payment[] = [];
+  const absent: Payment[] = [];
+  for (const p of payments) (missing(p) ? absent : present).push(p);
+
+  const asc = (a: Payment, b: Payment): number => {
+    switch (sort.columnId) {
+      case 'student':
+        return acc.studentName(a).localeCompare(acc.studentName(b));
+      case 'amount':
+        return a.amount - b.amount;
+      case 'status':
+        return STATUS_RANK[a.status] - STATUS_RANK[b.status];
+      case 'session':
+        return (acc.sessionDate(a) ?? '').localeCompare(acc.sessionDate(b) ?? '');
+      case 'received':
+        return (a.receivedDate ?? '').localeCompare(b.receivedDate ?? '');
+    }
+  };
+
+  present.sort((a, b) => asc(a, b) || acc.studentName(a).localeCompare(acc.studentName(b)));
+  if (sort.dir === 'desc') present.reverse();
+  return [...present, ...absent];
+};
 
 // ---------------------------------------------------------------------------
 // Totals

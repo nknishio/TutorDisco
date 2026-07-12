@@ -23,6 +23,14 @@ export interface Column<T> {
   render: (row: T) => ReactNode;
   /** Hide this column in the compact (stacked) layout. */
   hideOnCompact?: boolean;
+  /** Show a sort toggle (↕ / ↓ / ↑) next to this column's header in the wide layout. */
+  sortable?: boolean;
+}
+
+/** Which column the table is sorted by, and in which direction. */
+export interface TableSort {
+  columnId: string;
+  dir: 'asc' | 'desc';
 }
 
 export interface DataTableProps<T> {
@@ -30,6 +38,10 @@ export interface DataTableProps<T> {
   data: ReadonlyArray<T>;
   keyExtractor: (row: T) => string;
   onRowPress?: (row: T) => void;
+  /** Active sort (for rendering the arrow state); null when unsorted/default. */
+  sort?: TableSort | null;
+  /** Called when a sortable column's arrow is pressed. */
+  onToggleSort?: (columnId: string) => void;
   emptyTitle?: string;
   emptyDescription?: string;
   testID?: string;
@@ -49,6 +61,8 @@ export function DataTable<T>({
   data,
   keyExtractor,
   onRowPress,
+  sort,
+  onToggleSort,
   emptyTitle = 'Nothing here yet',
   emptyDescription,
   testID,
@@ -123,13 +137,40 @@ export function DataTable<T>({
           borderBottomColor: theme.colors.border,
         }}
       >
-        {columns.map((col) => (
-          <View key={col.id} style={{ flex: col.flex ?? 1, alignItems: alignToFlex(col.align) }}>
-            <Text variant="caption" color="textMuted">
+        {columns.map((col) => {
+          const canSort = Boolean(col.sortable && onToggleSort);
+          const active = sort?.columnId === col.id;
+          const arrow = !canSort ? '' : active ? (sort!.dir === 'desc' ? '↓' : '↑') : '↕';
+          const headerText = (
+            <Text variant="caption" color={active ? 'primary' : 'textMuted'}>
               {col.header.toUpperCase()}
             </Text>
-          </View>
-        ))}
+          );
+          return (
+            <View key={col.id} style={{ flex: col.flex ?? 1, alignItems: alignToFlex(col.align) }}>
+              {canSort ? (
+                <Pressable
+                  onPress={() => onToggleSort!(col.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Sort by ${col.header}`}
+                  style={({ hovered }: { pressed: boolean; hovered?: boolean }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    opacity: hovered ? 0.7 : 1,
+                  })}
+                >
+                  {headerText}
+                  <Text variant="caption" color={active ? 'primary' : 'textSubtle'}>
+                    {arrow}
+                  </Text>
+                </Pressable>
+              ) : (
+                headerText
+              )}
+            </View>
+          );
+        })}
       </HStack>
 
       <ScrollView>
