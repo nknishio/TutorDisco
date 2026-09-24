@@ -1,25 +1,32 @@
 /**
- * StatCard — a dashboard metric tile: label, big value, optional delta with trend
- * direction, and optional icon. The building block of the overview dashboard.
+ * StatCard — a metric tile: eyebrow label, a serif hero figure in tabular numerals,
+ * and an optional delta line with a trend icon. Standalone it's a hairline tile;
+ * inside a <StatGroup> the tiles share one surface, divided by rules — the
+ * preferred dashboard layout.
  */
-import React, { type ReactNode } from 'react';
+import React, { createContext, useContext, type PropsWithChildren, type ReactNode } from 'react';
 import { View } from 'react-native';
+import { Minus, TrendingDown, TrendingUp } from 'lucide-react-native';
 import { useTheme } from '../../theme';
-import { HStack, Text, VStack } from '../primitives';
-import { Card } from '../components/Card';
+import { useResponsive } from '../../responsive';
+import { HStack, Icon, Text, VStack } from '../primitives';
 
 export type Trend = 'up' | 'down' | 'flat';
 
 export interface StatCardProps {
   label: string;
   value: string;
-  /** e.g. "+12%". Colored by `trend`. */
+  /** e.g. "+12% vs last month". Colored by `trend`. */
   delta?: string;
   trend?: Trend;
   /** When true, an upward trend is good (green). When false (e.g. overdue), up is bad. */
   positiveIsGood?: boolean;
+  /** A muted line under the value when there's no delta (context, not comparison). */
+  hint?: string;
   icon?: ReactNode;
 }
+
+const InGroup = createContext(false);
 
 export const StatCard = ({
   label,
@@ -27,30 +34,96 @@ export const StatCard = ({
   delta,
   trend = 'flat',
   positiveIsGood = true,
+  hint,
   icon,
 }: StatCardProps) => {
   const theme = useTheme();
+  const grouped = useContext(InGroup);
 
-  const good = trend === 'flat' ? false : (trend === 'up') === positiveIsGood;
-  const deltaColor = trend === 'flat' ? theme.colors.textMuted : good ? theme.colors.success : theme.colors.danger;
-  const arrow = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→';
+  const good = trend === 'flat' ? null : (trend === 'up') === positiveIsGood;
+  const deltaColor = good == null ? 'textMuted' : good ? 'success' : 'danger';
+  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
 
   return (
-    <Card elevation="sm" style={{ flex: 1, minWidth: 160 }}>
+    <View
+      accessible
+      accessibilityLabel={`${label}: ${value}${delta ? `, ${delta}` : ''}`}
+      style={[
+        { flex: 1, minWidth: 150, padding: theme.space.lg + theme.space.xs },
+        grouped
+          ? null
+          : {
+              backgroundColor: theme.colors.surface,
+              borderRadius: theme.radii.lg,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+            },
+      ]}
+    >
       <VStack gap={theme.space.sm}>
         <HStack justify="space-between" align="center">
-          <Text variant="label" color="textMuted">
+          <Text variant="eyebrow" color="textMuted">
             {label}
           </Text>
           {icon ? <View>{icon}</View> : null}
         </HStack>
-        <Text variant="h1">{value}</Text>
+        <Text variant="h1" tabular numberOfLines={1} adjustsFontSizeToFit>
+          {value}
+        </Text>
         {delta ? (
-          <Text variant="caption" style={{ color: deltaColor }}>
-            {arrow} {delta}
+          <HStack gap={theme.space.xs} align="center">
+            <Icon as={TrendIcon} size="sm" color={deltaColor} />
+            <Text variant="caption" color={deltaColor} tabular>
+              {delta}
+            </Text>
+          </HStack>
+        ) : hint ? (
+          <Text variant="caption" color="textMuted">
+            {hint}
           </Text>
         ) : null}
       </VStack>
-    </Card>
+    </View>
+  );
+};
+
+/**
+ * StatGroup — one hairline surface holding several StatCards separated by rules.
+ * Wide: a single row. Phones: a two-column grid.
+ */
+export const StatGroup = ({ children }: PropsWithChildren) => {
+  const theme = useTheme();
+  const { isCompact } = useResponsive();
+  const tiles = React.Children.toArray(children).filter(Boolean);
+  const cols = isCompact ? 2 : tiles.length;
+
+  return (
+    <InGroup.Provider value>
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          backgroundColor: theme.colors.surface,
+          borderRadius: theme.radii.lg,
+          borderWidth: 1,
+          borderColor: theme.colors.border,
+          overflow: 'hidden',
+        }}
+      >
+        {tiles.map((tile, i) => (
+          <View
+            key={i}
+            style={{
+              width: `${100 / cols}%`,
+              borderLeftWidth: i % cols === 0 ? 0 : 1,
+              borderTopWidth: i >= cols ? 1 : 0,
+              borderColor: theme.colors.border,
+            }}
+          >
+            {tile}
+          </View>
+        ))}
+      </View>
+    </InGroup.Provider>
   );
 };

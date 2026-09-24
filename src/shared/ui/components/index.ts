@@ -12,3 +12,8 @@ export { TimeField, type TimeFieldProps } from './TimeField';
 export { Switch, type SwitchProps } from './Switch';
 export { DataTable, type DataTableProps, type Column, type TableSort } from './Table';
 export { DraggableList, type DraggableListProps } from './DraggableList';
+export { Checkbox, type CheckboxProps } from './Checkbox';
+export { Chip, type ChipProps } from './Chip';
+export { SegmentedControl, type SegmentedControlProps, type SegmentOption } from './SegmentedControl';
+export { ListRow, type ListRowProps } from './ListRow';
+export { Menu, type MenuProps, type MenuItem } from './Menu';

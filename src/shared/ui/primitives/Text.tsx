@@ -16,6 +16,8 @@ export interface TextProps extends RNTextProps {
   align?: TextStyle['textAlign'];
   /** Override the variant's weight (resolved to the loaded family for that weight). */
   weight?: TextStyle['fontWeight'];
+  /** Tabular (fixed-width) figures — use for money, dates, counts in columns. */
+  tabular?: boolean;
 }
 
 export const Text = ({
@@ -23,6 +25,7 @@ export const Text = ({
   color = 'text',
   align,
   weight,
+  tabular,
   style,
   ...rest
 }: TextProps) => {
@@ -37,6 +40,7 @@ export const Text = ({
         { color: theme.colors[color] },
         align ? { textAlign: align } : null,
         weight ? { fontFamily: fontFor(weight, variantFace(variant)) } : null,
+        tabular ? { fontVariant: ['tabular-nums'] } : null,
         style,
       ]}
       {...rest}
