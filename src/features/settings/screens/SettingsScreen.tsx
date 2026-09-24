@@ -29,6 +29,7 @@ export const SettingsScreen = (_: Props) => {
   const clearError = useBackupStore((s) => s.clearError);
 
   const currentAccount = useAuthStore((s) => s.currentAccount);
+  const logout = useAuthStore((s) => s.logout);
 
   const themePref = useSettingsStore((s) => s.theme);
   const loadSettings = useSettingsStore((s) => s.load);
@@ -94,6 +95,8 @@ export const SettingsScreen = (_: Props) => {
             <Text color="textSubtle" variant="label">
               @{currentAccount.username}
             </Text>
+            {/* Phones have no sidebar, so Sign out lives here too. */}
+            <Button label="Sign out" variant="secondary" size="sm" onPress={() => void logout()} />
           </VStack>
         )}
 

@@ -323,8 +323,8 @@ export function DraggableList<T>({
         <View style={{ width: HANDLE_WIDTH }} />
         {cols.map((col) => (
           <View key={col.id} style={{ flex: col.flex ?? 1, alignItems: alignToFlex(col.align) }}>
-            <Text variant="caption" color="textMuted">
-              {col.header.toUpperCase()}
+            <Text variant="eyebrow" color="textMuted">
+              {col.header}
             </Text>
           </View>
         ))}

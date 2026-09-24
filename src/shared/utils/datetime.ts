@@ -13,6 +13,17 @@ export const formatIsoDate = (date: IsoDate | string): string => {
   return `${MONTHS[m - 1]} ${d}, ${y}`;
 };
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** '2026-09-24' → 'Thu, Sep 24' (adds the year only when it isn't `currentYear`). */
+export const formatIsoDateShort = (date: IsoDate | string, currentYear?: number): string => {
+  const [y, m, d] = date.split('-').map(Number);
+  if (!y || !m || !d || m < 1 || m > 12) return String(date);
+  const weekday = WEEKDAYS[new Date(y, m - 1, d).getDay()];
+  const year = currentYear != null && y !== currentYear ? `, ${y}` : '';
+  return `${weekday}, ${MONTHS[m - 1]} ${d}${year}`;
+};
+
 /** '15:00' → '3:00 PM'. */
 export const formatIsoTime = (time: IsoTime | string): string => {
   const [hStr, min] = time.split(':');

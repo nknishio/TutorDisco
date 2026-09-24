@@ -27,6 +27,8 @@ export interface MenuItem {
   destructive?: boolean;
   checked?: boolean;
   disabled?: boolean;
+  /** Draw a rule above this item (groups related choices). */
+  separatorBefore?: boolean;
 }
 
 export interface MenuProps {
@@ -56,14 +58,20 @@ export const Menu = ({ items, title, renderTrigger, accessibilityLabel = 'More a
 
   const regular = items.filter((i) => !i.destructive);
   const destructive = items.filter((i) => i.destructive);
-  const estHeight = (title ? 32 : 0) + items.length * 40 + (destructive.length && regular.length ? 9 : 0) + 8;
+  const rules = items.filter((i) => i.separatorBefore).length + (destructive.length && regular.length ? 1 : 0);
+  const estHeight = (title ? 32 : 0) + items.length * 40 + rules * 9 + 8;
 
   // Right-align the menu to the trigger; flip above when it would overflow the bottom.
   const left = pos ? Math.max(8, Math.min(pos.x - MENU_WIDTH, winW - MENU_WIDTH - 8)) : 0;
   const below = pos ? pos.y + pos.h + 4 : 0;
   const top = pos ? (below + estHeight > winH - 8 ? Math.max(8, pos.y - estHeight - 4) : below) : 0;
 
-  const renderItem = (item: MenuItem) => (
+  const rule = (key: string) => (
+    <View key={key} style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: theme.space.xs }} />
+  );
+
+  const renderItem = (item: MenuItem) => [
+    item.separatorBefore ? rule(`${item.label}-rule`) : null,
     <Pressable
       key={item.label}
       disabled={item.disabled}
@@ -89,8 +97,8 @@ export const Menu = ({ items, title, renderTrigger, accessibilityLabel = 'More a
         {item.label}
       </Text>
       {item.checked ? <Icon as={Check} size="sm" color="primaryText" /> : null}
-    </Pressable>
-  );
+    </Pressable>,
+  ];
 
   return (
     <>
@@ -143,9 +151,7 @@ export const Menu = ({ items, title, renderTrigger, accessibilityLabel = 'More a
               </Text>
             ) : null}
             {regular.map(renderItem)}
-            {destructive.length && regular.length ? (
-              <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: theme.space.xs }} />
-            ) : null}
+            {destructive.length && regular.length ? rule('destructive-rule') : null}
             {destructive.map(renderItem)}
           </View>
         </Pressable>

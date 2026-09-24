@@ -11,7 +11,9 @@
  */
 import React, { useRef } from 'react';
 import { Animated, TextInput, type TextInputProps, type ViewStyle } from 'react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { useTheme } from '../../theme';
+import { Icon } from '../primitives';
 import { FormField, type FormFieldProps } from './FormField';
 
 export interface TextFieldProps
@@ -35,6 +37,8 @@ export interface TextFieldProps
     > {
   /** Render as a multi-line textarea. */
   multiline?: boolean;
+  /** Decorative icon inside the field's leading edge (e.g. Search). */
+  leadingIcon?: LucideIcon;
   numberOfLines?: number;
 }
 
@@ -46,6 +50,7 @@ export const TextField = ({
   multiline,
   numberOfLines = 4,
   editable = true,
+  leadingIcon,
   onFocus,
   onBlur,
   ...inputProps
@@ -73,11 +78,15 @@ export const TextField = ({
     paddingVertical: multiline ? theme.space.md : 0,
     minHeight: multiline ? numberOfLines * 22 : 44,
     justifyContent: 'center',
+    flexDirection: leadingIcon ? 'row' : 'column',
+    alignItems: leadingIcon ? 'center' : 'stretch',
+    gap: leadingIcon ? theme.space.sm : 0,
   };
 
   return (
     <FormField label={label} required={required} helperText={helperText} error={error}>
       <Animated.View style={[container, { borderColor }]}>
+        {leadingIcon ? <Icon as={leadingIcon} size="sm" color="textSubtle" /> : null}
         <TextInput
           {...inputProps}
           onFocus={handleFocus}
@@ -87,6 +96,7 @@ export const TextField = ({
           numberOfLines={multiline ? numberOfLines : 1}
           placeholderTextColor={theme.colors.textSubtle}
           style={{
+            flex: leadingIcon ? 1 : undefined,
             color: theme.colors.text,
             fontSize: theme.typography.fontSize.md,
             fontFamily: theme.typography.fontFamily.sans,

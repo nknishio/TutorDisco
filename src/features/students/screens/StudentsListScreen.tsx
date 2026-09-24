@@ -1,23 +1,32 @@
 /**
  * StudentsListScreen — list + search + add. Rows open the student detail screen.
- * Archived students are hidden by default behind a filter toggle.
+ * Archived students are hidden by default; sorting and the archived toggle live in
+ * one "Sort" menu so the header keeps a single primary action (Add student).
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ArrowUpDown, Plus, Search, Users } from 'lucide-react-native';
 import { useTheme } from '../../../shared/theme';
 import { useResponsive } from '../../../shared/responsive';
 import {
+  Avatar,
   Badge,
   Button,
+  Card,
   Column,
   DataTable,
   DraggableList,
+  EmptyState,
   HStack,
-  Select,
-  Spinner,
+  ListRow,
+  Menu,
+  Page,
+  PageHeader,
+  Skeleton,
   Text,
   TextField,
   VStack,
+  type MenuItem,
 } from '../../../shared/ui';
 import type { Assignment, Session, SessionId, Student, StudentStatus } from '../../../domain/types';
 import {
@@ -27,14 +36,12 @@ import {
   STUDENT_SORT_OPTIONS,
 } from '../../../domain/services/studentSort';
 import { formatCents } from '../../../shared/utils/money';
-import { formatIsoTime, todayIsoDate } from '../../../shared/utils/datetime';
+import { formatIsoDateShort, formatIsoTime, todayIsoDate } from '../../../shared/utils/datetime';
+import { labelFor } from '../../../shared/utils/labels';
 
-const formatSessionDateTime = (date: string, time: string): string => {
-  const [y, m, d] = date.split('-').map(Number);
-  return `${m}/${d}/${String(y).slice(-2)} @ ${formatIsoTime(time)}`;
-};
+const formatSessionDateTime = (date: string, time: string): string =>
+  `${formatIsoDateShort(date, new Date().getFullYear())} · ${formatIsoTime(time)}`;
 import {
-  useAuthStore,
   useStudentsStore,
   useSessionsStore,
   useAssignmentsStore,
@@ -50,7 +57,7 @@ const statusTone = (s: StudentStatus) =>
 
 export const StudentsListScreen = ({ navigation }: Props) => {
   const theme = useTheme();
-  const { select, isCompact } = useResponsive();
+  const { isCompact } = useResponsive();
 
   const order = useStudentsStore((s) => s.order);
   const byId = useStudentsStore((s) => s.byId);
@@ -58,9 +65,6 @@ export const StudentsListScreen = ({ navigation }: Props) => {
   const status = useStudentsStore((s) => s.status);
   const setQuery = useStudentsStore((s) => s.setQuery);
   const load = useStudentsStore((s) => s.load);
-
-  const currentAccount = useAuthStore((s) => s.currentAccount);
-  const logout = useAuthStore((s) => s.logout);
 
   const sessionsByStudent = useSessionsStore((s) => s.byStudent);
   const sessionsById = useSessionsStore((s) => s.byId);
@@ -187,133 +191,218 @@ export const StudentsListScreen = ({ navigation }: Props) => {
     void setStudentCustomOrder(mergeReorder(customBase, asBase));
   };
 
+  const nextSessionText = (s: Student): string => {
+    const sess = nextSessionByStudent[s.id];
+    return sess ? formatSessionDateTime(sess.date, sess.startTime) : 'Not scheduled';
+  };
+
   const columns: Column<Student>[] = [
-    { id: 'name', header: 'Name', flex: 2, render: (s) => <Text variant="bodyStrong">{s.name}</Text> },
+    {
+      id: 'name',
+      header: 'Name',
+      flex: 2,
+      render: (s) => (
+        <HStack gap={theme.space.md} align="center">
+          <Avatar name={s.name} size="sm" />
+          <Text variant="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
+            {s.name}
+          </Text>
+        </HStack>
+      ),
+    },
     {
       id: 'next_session',
-      header: 'Next Session',
+      header: 'Next session',
       flex: 2,
       hideOnCompact: true,
-      render: (s) => {
-        const sess = nextSessionByStudent[s.id];
-        return sess
-          ? <Text color="textMuted">{formatSessionDateTime(sess.date, sess.startTime)}</Text>
-          : <Text color="textMuted">Not scheduled</Text>;
-      },
+      render: (s) => (
+        <Text color={nextSessionByStudent[s.id] ? 'text' : 'textMuted'} tabular>
+          {nextSessionText(s)}
+        </Text>
+      ),
     },
     {
       id: 'next_assignment',
-      header: 'Next Assignment',
+      header: 'Next assignment',
       flex: 2,
       hideOnCompact: true,
       render: (s) => {
         const val = nextAssignmentByStudent[s.id];
-        if (val === undefined || val === 'no_session') return <Text color="textMuted">Not scheduled</Text>;
-        if (val === null) return <Text color="danger">Not assigned</Text>;
-        return <Text color="textMuted">{val.title}</Text>;
+        if (val === undefined || val === 'no_session') return <Text color="textMuted">—</Text>;
+        if (val === null) return <Text color="warning">Not assigned</Text>;
+        return <Text numberOfLines={1}>{val.title}</Text>;
       },
     },
-    { id: 'rate', header: 'Rate', flex: 1, align: 'right', render: (s) => <Text color="textMuted">{formatCents(s.defaultHourlyRate)}/hr</Text> },
-    { id: 'status', header: 'Status', flex: 1, align: 'right', render: (s) => <Badge label={s.status} tone={statusTone(s.status)} /> },
+    {
+      id: 'rate',
+      header: 'Rate',
+      flex: 1,
+      align: 'right',
+      render: (s) => (
+        <Text color="textMuted" tabular>
+          {formatCents(s.defaultHourlyRate)}/hr
+        </Text>
+      ),
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      flex: 1,
+      align: 'right',
+      render: (s) => <Badge label={labelFor(s.status)} tone={statusTone(s.status)} />,
+    },
   ];
 
-  const maxWidth = select({ compact: 9999, expanded: 1080 });
   const loading = status === 'loading' && order.length === 0;
+  const openStudent = (s: Student) => navigation.navigate('StudentDetail', { studentId: s.id });
+
+  const allStudents = order.map((id) => byId[id]).filter((s): s is Student => Boolean(s));
+  const activeCount = allStudents.filter((s) => s.status === 'active').length;
+  const currentCount = allStudents.filter((s) => s.status !== 'archived').length;
+  const subtitle =
+    currentCount === 0 ? undefined : `${currentCount} student${currentCount === 1 ? '' : 's'} · ${activeCount} active`;
+
+  const sortLabel = STUDENT_SORT_OPTIONS.find((o) => o.value === sortKey)?.label ?? 'Custom order';
+  const sortItems: MenuItem[] = [
+    ...STUDENT_SORT_OPTIONS.map((o) => ({
+      label: o.label,
+      checked: o.value === sortKey,
+      onSelect: () => void setStudentSort(o.value, sortDir),
+    })),
+    { label: 'Ascending', checked: sortDir === 'asc', separatorBefore: true, onSelect: () => void setStudentSort(sortKey, 'asc') },
+    { label: 'Descending', checked: sortDir === 'desc', onSelect: () => void setStudentSort(sortKey, 'desc') },
+    {
+      label: 'Show archived',
+      checked: showArchived,
+      separatorBefore: true,
+      onSelect: () => setShowArchived((v) => !v),
+    },
+  ];
+
+  const addButton = <Button label="Add student" icon={Plus} onPress={() => setAddOpen(true)} />;
+  const isEmpty = !loading && allStudents.length === 0;
+
+  const renderList = () => {
+    if (loading) {
+      return (
+        <Card padded={false}>
+          {[0, 1, 2, 3].map((i) => (
+            <HStack
+              key={i}
+              gap={theme.space.md}
+              align="center"
+              style={{
+                padding: theme.space.lg,
+                borderTopWidth: i ? 1 : 0,
+                borderTopColor: theme.colors.border,
+              }}
+            >
+              <Skeleton width={32} height={32} radius={16} />
+              <VStack gap={theme.space.xs} flex={1}>
+                <Skeleton width="40%" height={14} />
+                <Skeleton width="25%" height={12} />
+              </VStack>
+            </HStack>
+          ))}
+        </Card>
+      );
+    }
+    if (isEmpty) {
+      return (
+        <Card>
+          <EmptyState
+            icon={Users}
+            title="No students yet"
+            description="Add your first student to start scheduling sessions and tracking payments."
+            action={addButton}
+          />
+        </Card>
+      );
+    }
+    if (canDrag && sorted.length > 0) {
+      return (
+        <DraggableList
+          columns={columns}
+          data={sorted}
+          keyExtractor={(s) => s.id}
+          onReorder={handleReorder}
+          onRowPress={openStudent}
+        />
+      );
+    }
+    if (isCompact) {
+      return sorted.length === 0 ? (
+        <EmptyState icon={Search} title="No matches" description="Try a different name, email or school." />
+      ) : (
+        <Card padded={false}>
+          {sorted.map((s, i) => (
+            <ListRow
+              key={s.id}
+              divider={i > 0}
+              leading={<Avatar name={s.name} size="sm" />}
+              title={s.name}
+              subtitle={nextSessionText(s)}
+              trailing={<Badge label={labelFor(s.status)} tone={statusTone(s.status)} />}
+              chevron
+              onPress={() => openStudent(s)}
+            />
+          ))}
+        </Card>
+      );
+    }
+    return (
+      <DataTable
+        columns={columns}
+        data={sorted}
+        keyExtractor={(s) => s.id}
+        onRowPress={openStudent}
+        emptyTitle="No matches"
+        emptyDescription="Try a different name, email or school."
+      />
+    );
+  };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      contentContainerStyle={{ alignItems: 'center' }}
-      keyboardShouldPersistTaps="handled"
-    >
-      <VStack gap={theme.space.lg} style={{ width: '100%', maxWidth, padding: theme.space.lg }}>
-        {/*
-          Header. On phones the search field takes its own full-width row and the
-          actions wrap across lines below — otherwise the five buttons overflow the
-          screen width on iOS. On wider screens they share one row.
-        */}
-        {(() => {
-          const actions = (
-            <HStack gap={theme.space.sm} align="center" wrap>
-              {currentAccount ? <Badge label={currentAccount.displayName} tone="neutral" /> : null}
-              <Button
-                label={showArchived ? 'Hide archived' : 'Show archived'}
-                variant="ghost"
-                size="sm"
-                onPress={() => setShowArchived((v) => !v)}
+    <Page safeTop>
+      <PageHeader title="Students" subtitle={subtitle} actions={isEmpty ? undefined : addButton} />
+
+      <VStack gap={theme.space.md}>
+        {isEmpty ? null : (
+          <HStack gap={theme.space.sm} align="center">
+            <View style={{ flex: 1, maxWidth: isCompact ? undefined : 360 }}>
+              <TextField
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Search students"
+                autoCapitalize="none"
+                leadingIcon={Search}
               />
-              <Button label="Settings" variant="ghost" size="sm" onPress={() => navigation.navigate('SettingsTab', { screen: 'Settings' })} />
-              <Button label="Templates" variant="ghost" size="sm" onPress={() => navigation.navigate('SettingsTab', { screen: 'Templates' })} />
-              <Button label="Revenue" variant="ghost" size="sm" onPress={() => navigation.navigate('RevenueDashboard')} />
-              <Button label="Payments" variant="secondary" size="sm" onPress={() => navigation.navigate('Payments')} />
-              <Button label="Add student" variant="primary" size="sm" onPress={() => setAddOpen(true)} />
-              <Button label="Sign out" variant="ghost" size="sm" onPress={() => void logout()} />
-            </HStack>
-          );
-
-          return isCompact ? (
-            <VStack gap={theme.space.md}>
-              <TextField value={query} onChangeText={setQuery} placeholder="Search students…" autoCapitalize="none" />
-              {actions}
-            </VStack>
-          ) : (
-            <HStack gap={theme.space.md} justify="space-between" align="center" wrap>
-              <View style={{ flex: 1, minWidth: 220 }}>
-                <TextField value={query} onChangeText={setQuery} placeholder="Search students…" autoCapitalize="none" />
-              </View>
-              {actions}
-            </HStack>
-          );
-        })()}
-
-        <HStack gap={theme.space.md} align="center" wrap>
-          <Text variant="label" color="textMuted">
-            Sort by
-          </Text>
-          <View style={{ minWidth: 200, maxWidth: 260 }}>
-            <Select
-              value={sortKey}
-              options={STUDENT_SORT_OPTIONS}
-              onChange={(k) => void setStudentSort(k, sortDir)}
-              testID="student-sort-select"
+            </View>
+            <Menu
+              title="Sort by"
+              items={sortItems}
+              renderTrigger={(open) => (
+                <Button
+                  label={isCompact ? 'Sort' : sortLabel}
+                  accessibilityLabel={`Sort: ${sortLabel}, ${sortDir === 'asc' ? 'ascending' : 'descending'}`}
+                  variant="secondary"
+                  icon={ArrowUpDown}
+                  onPress={() => open()}
+                />
+              )}
             />
-          </View>
-          <Button
-            label={sortDir === 'asc' ? '↑ Ascending' : '↓ Descending'}
-            variant="secondary"
-            size="sm"
-            onPress={() => void setStudentSort(sortKey, sortDir === 'asc' ? 'desc' : 'asc')}
-          />
-          {sortKey === 'custom' && query.trim() !== '' ? (
-            <Text variant="caption" color="textMuted">
-              Clear search to drag-reorder
-            </Text>
-          ) : null}
-        </HStack>
-
-        {loading ? (
-          <Spinner fill />
-        ) : canDrag && sorted.length > 0 ? (
-          <DraggableList
-            columns={columns}
-            data={sorted}
-            keyExtractor={(s) => s.id}
-            onReorder={handleReorder}
-            onRowPress={(s) => navigation.navigate('StudentDetail', { studentId: s.id })}
-          />
-        ) : (
-          <DataTable
-            columns={columns}
-            data={sorted}
-            keyExtractor={(s) => s.id}
-            onRowPress={(s) => navigation.navigate('StudentDetail', { studentId: s.id })}
-            emptyTitle={query ? 'No matches' : 'No students yet'}
-            emptyDescription={query ? 'Try a different search.' : 'Add your first student — the dance floor awaits.'}
-          />
+          </HStack>
         )}
+        {sortKey === 'custom' && query.trim() !== '' ? (
+          <Text variant="caption" color="textMuted">
+            Clear the search to drag students into a custom order.
+          </Text>
+        ) : null}
+
+        {renderList()}
       </VStack>
 
       <StudentFormModal visible={addOpen} onClose={() => setAddOpen(false)} />
-    </ScrollView>
+    </Page>
   );
 };

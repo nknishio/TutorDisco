@@ -37,7 +37,7 @@ export interface ButtonProps {
 
 const SIZES: Record<ButtonSize, { height: number; padX: number; variant: 'label' | 'bodyStrong' }> = {
   sm: { height: 32, padX: 12, variant: 'label' },
-  md: { height: 40, padX: 16, variant: 'bodyStrong' },
+  md: { height: 44, padX: 16, variant: 'bodyStrong' },
   lg: { height: 48, padX: 20, variant: 'bodyStrong' },
 };
 

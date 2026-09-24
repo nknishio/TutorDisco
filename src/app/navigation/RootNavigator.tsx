@@ -85,7 +85,11 @@ const StudentsNavigator = () => {
   };
   return (
     <StudentsStack.Navigator initialRouteName="StudentsList" screenOptions={options}>
-      <StudentsStack.Screen name="StudentsList" component={StudentsListScreen} options={{ title: 'Students' }} />
+      <StudentsStack.Screen
+        name="StudentsList"
+        component={StudentsListScreen}
+        options={{ title: 'Students', headerShown: false }}
+      />
       <StudentsStack.Screen name="StudentDetail" component={StudentDetailScreen} options={{ title: 'Student' }} />
       <StudentsStack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ title: 'Session' }} />
     </StudentsStack.Navigator>

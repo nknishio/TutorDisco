@@ -17,3 +17,4 @@ export { Chip, type ChipProps } from './Chip';
 export { SegmentedControl, type SegmentedControlProps, type SegmentOption } from './SegmentedControl';
 export { ListRow, type ListRowProps } from './ListRow';
 export { Menu, type MenuProps, type MenuItem } from './Menu';
+export { Avatar, initialsOf, type AvatarProps } from './Avatar';
