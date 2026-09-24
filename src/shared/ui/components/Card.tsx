@@ -1,6 +1,8 @@
 /**
- * Card — the primary surface container. Optional header (title/subtitle + action)
- * and footer. Elevation via theme shadow tokens; pressable when `onPress` is given.
+ * Card — the primary surface container: a hairline-bordered sheet on the paper
+ * background. Optional header (eyebrow title / subtitle + action) and a footer
+ * separated by a rule. No shadow by default — elevation is reserved for overlays.
+ * Pressable when `onPress` is given.
  */
 import React, { type PropsWithChildren, type ReactNode } from 'react';
 import { Pressable, View, type ViewStyle } from 'react-native';
@@ -10,7 +12,10 @@ import { HStack, Text, VStack } from '../primitives';
 export type CardElevation = 'none' | 'sm' | 'md' | 'lg';
 
 export interface CardProps {
+  /** Section label, set as an eyebrow (small uppercase) unless `titleStyle="heading"`. */
   title?: string;
+  /** 'eyebrow' for section labels (default); 'heading' when the title is a name. */
+  titleStyle?: 'eyebrow' | 'heading';
   subtitle?: string;
   /** Rendered at the top-right of the header. */
   headerAction?: ReactNode;
@@ -24,10 +29,11 @@ export interface CardProps {
 
 export const Card = ({
   title,
+  titleStyle = 'eyebrow',
   subtitle,
   headerAction,
   footer,
-  elevation = 'sm',
+  elevation = 'none',
   padded = true,
   onPress,
   style,
@@ -35,7 +41,7 @@ export const Card = ({
   testID,
 }: PropsWithChildren<CardProps>) => {
   const theme = useTheme();
-  const pad = theme.space.xl;
+  const pad = theme.space.lg + theme.space.xs; // 20
 
   const base: ViewStyle = {
     backgroundColor: theme.colors.surface,
@@ -53,15 +59,27 @@ export const Card = ({
       {hasHeader ? (
         <HStack
           justify="space-between"
-          align="flex-start"
+          align="center"
+          gap={theme.space.md}
           style={{
             paddingHorizontal: pad,
-            paddingTop: pad,
+            paddingTop: pad - theme.space.xs,
             paddingBottom: children ? theme.space.md : pad,
+            minHeight: 48,
           }}
         >
-          <VStack gap={2} flex={1}>
-            {title ? <Text variant="title">{title}</Text> : null}
+          <VStack gap={theme.space.xs} flex={1}>
+            {title ? (
+              titleStyle === 'heading' ? (
+                <Text variant="h3" accessibilityRole="header">
+                  {title}
+                </Text>
+              ) : (
+                <Text variant="eyebrow" color="textMuted" accessibilityRole="header">
+                  {title}
+                </Text>
+              )
+            ) : null}
             {subtitle ? (
               <Text variant="label" color="textMuted">
                 {subtitle}
@@ -85,7 +103,6 @@ export const Card = ({
             borderTopColor: theme.colors.border,
             paddingHorizontal: pad,
             paddingVertical: theme.space.md,
-            backgroundColor: theme.colors.surfaceMuted,
           }}
         >
           {footer}

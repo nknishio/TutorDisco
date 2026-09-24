@@ -19,7 +19,9 @@ import {
 } from 'react-native';
 import { useTheme } from '../../theme';
 import { useResponsive } from '../../responsive';
+import { X } from 'lucide-react-native';
 import { HStack, Text } from '../primitives';
+import { IconButton } from './IconButton';
 
 export interface ModalProps {
   visible: boolean;
@@ -105,16 +107,7 @@ export const Modal = ({
               }}
             >
               <Text variant="h3">{title}</Text>
-              <Pressable
-                onPress={onClose}
-                accessibilityRole="button"
-                accessibilityLabel="Close"
-                hitSlop={8}
-              >
-                <Text variant="h3" color="textMuted">
-                  ×
-                </Text>
-              </Pressable>
+              <IconButton icon={X} accessibilityLabel="Close" onPress={onClose} size="sm" />
             </HStack>
           ) : null}
 

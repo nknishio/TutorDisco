@@ -104,6 +104,7 @@ export const SessionDetailScreen = ({ route }: Props) => {
         {/* Session info */}
         <Card
           title={session.title}
+          titleStyle="heading"
           headerAction={
             <HStack gap={theme.space.sm}>
               <Button label="Email" variant="ghost" size="sm" onPress={() => setEmailOpen(true)} />

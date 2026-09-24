@@ -30,14 +30,15 @@ export const TimeField = ({ value, onChange, label, required, helperText, error 
           value={value}
           onChange={(e) => onChange(e.target.value)}
           style={{
-            height: 40,
+            height: 44,
             width: '100%',
             boxSizing: 'border-box',
             paddingLeft: theme.space.md,
             paddingRight: theme.space.md,
             borderWidth: 1,
             borderStyle: 'solid',
-            borderColor: error ? theme.colors.danger : theme.colors.border,
+            borderColor: error ? theme.colors.danger : theme.colors.borderStrong,
+            outlineColor: theme.colors.focusRing,
             borderRadius: theme.radii.md,
             backgroundColor: theme.colors.surface,
             color: theme.colors.text,

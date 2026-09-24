@@ -5,8 +5,9 @@
  */
 import React, { useState } from 'react';
 import { Pressable, View, type ViewStyle } from 'react-native';
+import { Check, ChevronDown } from 'lucide-react-native';
 import { useTheme } from '../../theme';
-import { HStack, Text, VStack } from '../primitives';
+import { HStack, Icon, Text, VStack } from '../primitives';
 import { FormField, type FormFieldProps } from './FormField';
 import { Modal } from './Modal';
 
@@ -41,13 +42,13 @@ export function Select<T extends string | number>({
   const selected = options.find((o) => o.value === value) ?? null;
 
   const trigger: ViewStyle = {
-    height: 40,
+    height: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: theme.space.md,
     borderWidth: 1,
-    borderColor: error ? theme.colors.danger : theme.colors.border,
+    borderColor: error ? theme.colors.danger : theme.colors.borderStrong,
     borderRadius: theme.radii.md,
     backgroundColor: disabled ? theme.colors.surfaceMuted : theme.colors.surface,
   };
@@ -63,7 +64,7 @@ export function Select<T extends string | number>({
         style={trigger}
       >
         <Text color={selected ? 'text' : 'textSubtle'}>{selected?.label ?? placeholder}</Text>
-        <Text color="textMuted">▾</Text>
+        <Icon as={ChevronDown} size="sm" />
       </Pressable>
 
       <Modal visible={open} onClose={() => setOpen(false)} title={label ?? 'Select'}>
@@ -88,11 +89,11 @@ export function Select<T extends string | number>({
                 })}
               >
                 <HStack justify="space-between" align="center">
-                  <Text color={isSelected ? 'primary' : 'text'}>{opt.label}</Text>
+                  <Text color={isSelected ? 'primaryText' : 'text'} weight={isSelected ? theme.typography.fontWeight.medium : undefined}>
+                    {opt.label}
+                  </Text>
                   {isSelected ? (
-                    <Text color="primaryText" weight={theme.typography.fontWeight.semibold}>
-                      ✓
-                    </Text>
+                    <Icon as={Check} size="sm" color="primaryText" />
                   ) : (
                     <View />
                   )}

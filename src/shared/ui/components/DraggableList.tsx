@@ -2,7 +2,7 @@
  * DraggableList — a reorderable table that mirrors DataTable's layout.
  *
  * Renders the same header + columns (wide) or stacked cards (compact) as DataTable, but
- * with a leading drag handle (≡) per row. Grabbing the handle lifts the row; as it moves,
+ * with a leading drag handle (grip icon) per row. Grabbing the handle lifts the row; as it moves,
  * the other rows glide aside (spring-animated, LinkedIn-style) and on release the new
  * order is reported. Touching the row body still fires `onRowPress`.
  *
@@ -16,7 +16,8 @@ import React, { useMemo, useRef, useState, type ReactNode } from 'react';
 import { Animated, PanResponder, Pressable, View, type ViewStyle } from 'react-native';
 import { useTheme } from '../../theme';
 import { useResponsive } from '../../responsive';
-import { HStack, Text, VStack } from '../primitives';
+import { GripVertical } from 'lucide-react-native';
+import { HStack, Icon, Text, VStack } from '../primitives';
 import type { Column } from './Table';
 
 export interface DraggableListProps<T> {
@@ -192,9 +193,7 @@ export function DraggableList<T>({
         alignSelf: 'stretch',
       }}
     >
-      <Text color="textMuted" variant="bodyStrong">
-        ≡
-      </Text>
+      <Icon as={GripVertical} size="sm" color="textSubtle" />
       {label ? (
         <Text color="textSubtle" variant="caption">
           {label}
@@ -208,11 +207,7 @@ export function DraggableList<T>({
       ? {
           zIndex: 10,
           backgroundColor: theme.colors.surfaceHover,
-          shadowColor: '#000',
-          shadowOpacity: 0.2,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 2 },
-          elevation: 4,
+          ...theme.shadows.md,
         }
       : { zIndex: 1, backgroundColor: theme.colors.surface };
 
@@ -228,9 +223,7 @@ export function DraggableList<T>({
       accessibilityLabel="Drag to reorder"
       style={{ paddingHorizontal: theme.space.xs, paddingVertical: theme.space.xs, justifyContent: 'center' }}
     >
-      <Text color="textMuted" variant="bodyStrong">
-        ≡
-      </Text>
+      <Icon as={GripVertical} size="sm" color="textSubtle" />
     </View>
   );
 
@@ -248,7 +241,7 @@ export function DraggableList<T>({
               transform: [{ translateY: index === activeIndex ? pan : shifts[index]! }],
               zIndex: index === activeIndex ? 10 : 1,
               ...(index === activeIndex
-                ? { shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 4 }
+                ? theme.shadows.md
                 : null),
             }}
           >

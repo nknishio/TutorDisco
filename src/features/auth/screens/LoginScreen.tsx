@@ -40,7 +40,7 @@ export const LoginScreen = ({ onSwitchToRegister }: LoginScreenProps) => {
       keyboardShouldPersistTaps="handled"
     >
       <View style={{ width: '100%', maxWidth: 400 }}>
-        <Card title="Sign in" subtitle="TutorDisco (disco — Latin for “I learn”)">
+        <Card titleStyle="heading" title="Sign in" subtitle="TutorDisco (disco — Latin for “I learn”)">
           <VStack gap={theme.space.lg}>
             {error ? <Text color="danger">{error}</Text> : null}
             <TextField

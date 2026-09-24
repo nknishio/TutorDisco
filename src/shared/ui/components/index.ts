@@ -1,6 +1,7 @@
 export { Button, type ButtonProps, type ButtonVariant, type ButtonSize } from './Button';
 export { Card, type CardProps, type CardElevation } from './Card';
-export { Badge, type BadgeProps, type BadgeTone } from './Badge';
+export { Badge, StatusPill, type BadgeProps, type StatusPillProps, type BadgeTone } from './Badge';
+export { IconButton, type IconButtonProps } from './IconButton';
 export { Modal, type ModalProps } from './Modal';
 export { FormField, type FormFieldProps } from './FormField';
 export { TextField, type TextFieldProps } from './TextField';

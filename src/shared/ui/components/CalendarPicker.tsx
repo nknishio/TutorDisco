@@ -12,8 +12,9 @@
  */
 import React, { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
+import { ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react-native';
 import { useTheme } from '../../theme';
-import { Text } from '../primitives';
+import { Icon, Text } from '../primitives';
 import { todayIsoDate } from '../../utils/datetime';
 
 export interface CalendarPickerProps {
@@ -62,7 +63,7 @@ export const CalendarPicker = ({ value, onChange, testID }: CalendarPickerProps)
   const goNext = () =>
     setView((v) => (v.month === 11 ? { year: v.year + 1, month: 0 } : { ...v, month: v.month + 1 }));
 
-  const navButton = (label: string, onPress: () => void, accessibilityLabel: string) => (
+  const navButton = (glyph: LucideIcon, onPress: () => void, accessibilityLabel: string) => (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
@@ -76,7 +77,7 @@ export const CalendarPicker = ({ value, onChange, testID }: CalendarPickerProps)
         backgroundColor: pressed || hovered ? theme.colors.surfaceHover : 'transparent',
       })}
     >
-      <Text variant="h3" color="textMuted">{label}</Text>
+      <Icon as={glyph} size="md" />
     </Pressable>
   );
 
@@ -84,9 +85,9 @@ export const CalendarPicker = ({ value, onChange, testID }: CalendarPickerProps)
     <View testID={testID} style={{ gap: theme.space.sm }}>
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        {navButton('‹', goPrev, 'Previous month')}
+        {navButton(ChevronLeft, goPrev, 'Previous month')}
         <Text variant="bodyStrong">{`${MONTHS_FULL[view.month]} ${view.year}`}</Text>
-        {navButton('›', goNext, 'Next month')}
+        {navButton(ChevronRight, goNext, 'Next month')}
       </View>
 
       {/* Weekday header */}

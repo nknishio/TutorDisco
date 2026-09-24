@@ -323,6 +323,7 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
   const profileCard = (
     <Card
       title={student.name}
+      titleStyle="heading"
       subtitle={student.gradeLevel ? `Grade ${student.gradeLevel}` : undefined}
       headerAction={
         <HStack gap={theme.space.sm}>

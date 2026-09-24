@@ -1,5 +1,8 @@
 /**
- * Badge / status pill. Tone maps to semantic colors with accessible muted fills.
+ * StatusPill (a.k.a. Badge) — a small tinted label with an optional leading dot.
+ * Tone maps to semantic colors with accessible muted fills (text ≥ 4.5:1 on tint).
+ * The dot is decorative; the label always carries the meaning, never color alone.
+ * Pass human-readable labels (see `labelFor` in shared/utils), not raw enum values.
  */
 import React from 'react';
 import { View } from 'react-native';
@@ -12,6 +15,8 @@ export type BadgeTone = 'neutral' | 'primary' | 'success' | 'warning' | 'danger'
 export interface BadgeProps {
   label: string;
   tone?: BadgeTone;
+  /** Show a leading status dot (default true for status tones, false for neutral). */
+  dot?: boolean;
 }
 
 const toneColors = (t: Theme, tone: BadgeTone): { bg: string; fg: string } => {
@@ -32,22 +37,33 @@ const toneColors = (t: Theme, tone: BadgeTone): { bg: string; fg: string } => {
   }
 };
 
-export const Badge = ({ label, tone = 'neutral' }: BadgeProps) => {
+export const Badge = ({ label, tone = 'neutral', dot }: BadgeProps) => {
   const theme = useTheme();
   const c = toneColors(theme, tone);
+  const showDot = dot ?? tone !== 'neutral';
   return (
     <View
       style={{
         alignSelf: 'flex-start',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.space.xs + 2,
         backgroundColor: c.bg,
         paddingHorizontal: theme.space.sm,
-        paddingVertical: 3,
+        paddingVertical: theme.space.xs - 2,
         borderRadius: theme.radii.pill,
       }}
     >
-      <Text variant="caption" style={{ color: c.fg }}>
+      {showDot ? (
+        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.fg }} />
+      ) : null}
+      <Text variant="caption" weight={theme.typography.fontWeight.medium} style={{ color: c.fg }}>
         {label}
       </Text>
     </View>
   );
 };
+
+/** Preferred name for status labels. */
+export const StatusPill = Badge;
+export type StatusPillProps = BadgeProps;

@@ -75,6 +75,7 @@ export const TemplatesScreen = (_props: Props) => {
             renderItem={(t, dragHandle) => (
               <Card
                 title={t.title}
+                titleStyle="heading"
                 headerAction={
                   <HStack gap={theme.space.sm} align="center">
                     {dragHandle}

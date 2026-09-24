@@ -10,7 +10,8 @@ import React, { type ReactNode } from 'react';
 import { Pressable, ScrollView, View, type ViewStyle } from 'react-native';
 import { useTheme } from '../../theme';
 import { useResponsive } from '../../responsive';
-import { HStack, Text, VStack } from '../primitives';
+import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react-native';
+import { HStack, Icon, Text, VStack } from '../primitives';
 import { EmptyState } from '../feedback/EmptyState';
 
 export interface Column<T> {
@@ -23,7 +24,7 @@ export interface Column<T> {
   render: (row: T) => ReactNode;
   /** Hide this column in the compact (stacked) layout. */
   hideOnCompact?: boolean;
-  /** Show a sort toggle (↕ / ↓ / ↑) next to this column's header in the wide layout. */
+  /** Show a sort toggle next to this column's header in the wide layout. */
   sortable?: boolean;
 }
 
@@ -140,10 +141,10 @@ export function DataTable<T>({
         {columns.map((col) => {
           const canSort = Boolean(col.sortable && onToggleSort);
           const active = sort?.columnId === col.id;
-          const arrow = !canSort ? '' : active ? (sort!.dir === 'desc' ? '↓' : '↑') : '↕';
+          const arrow = active ? (sort!.dir === 'desc' ? ArrowDown : ArrowUp) : ChevronsUpDown;
           const headerText = (
-            <Text variant="caption" color={active ? 'primary' : 'textMuted'}>
-              {col.header.toUpperCase()}
+            <Text variant="eyebrow" color={active ? 'primaryText' : 'textMuted'}>
+              {col.header}
             </Text>
           );
           return (
@@ -153,17 +154,17 @@ export function DataTable<T>({
                   onPress={() => onToggleSort!(col.id)}
                   accessibilityRole="button"
                   accessibilityLabel={`Sort by ${col.header}`}
+                  // Announced sort state (web: aria-sort on the header control).
+                  aria-sort={active ? (sort!.dir === 'desc' ? 'descending' : 'ascending') : 'none'}
                   style={({ hovered }: { pressed: boolean; hovered?: boolean }) => ({
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 4,
+                    gap: theme.space.xs,
                     opacity: hovered ? 0.7 : 1,
                   })}
                 >
                   {headerText}
-                  <Text variant="caption" color={active ? 'primary' : 'textSubtle'}>
-                    {arrow}
-                  </Text>
+                  <Icon as={arrow} size="sm" color={active ? 'primaryText' : 'textSubtle'} />
                 </Pressable>
               ) : (
                 headerText
