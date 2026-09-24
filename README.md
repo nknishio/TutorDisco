@@ -10,9 +10,6 @@ and the web**. All data lives on-device in SQLite — no server, no network requ
 sign into **local, password-protected accounts**, each with its own database, so different
 tutors keep separate data on the same device/browser.
 
-> New to this codebase? Start with **[CLAUDE.md](CLAUDE.md)** — it's the up-to-date
-> orientation (architecture, conventions, gotchas) for adding features or fixing bugs.
-
 ---
 
 ## Highlights
@@ -137,7 +134,6 @@ analytics or network calls are made.
 
 | Doc | What's in it |
 | --- | --- |
-| [CLAUDE.md](CLAUDE.md) | **Start here** — up-to-date orientation, conventions & gotchas for contributors |
 | [architecture.md](architecture.md) | Architecture & design rationale (original design doc) |
 | [docs/schema.md](docs/schema.md) | Schema *design* doc (as-built schema lives in the migrations) |
 | [docs/navigation.md](docs/navigation.md) | Navigation map |
