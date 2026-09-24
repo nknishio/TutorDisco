@@ -4,16 +4,15 @@
  */
 import React, { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../../shared/theme';
 import { Button, Card, DraggableList, HStack, Spinner, Text, VStack } from '../../../shared/ui';
 import type { EmailTemplate } from '../../../domain/types';
 import { buildCustomBase } from '../../../domain/services/customOrder';
 import { useSettingsStore, useTemplatesStore } from '../../../store';
-import type { RootStackParamList } from '../../../app/navigation/types';
+import type { SettingsScreenProps } from '../../../app/navigation/types';
 import { TemplateFormModal } from '../components/TemplateFormModal';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Templates'>;
+type Props = SettingsScreenProps<'Templates'>;
 
 const snippet = (content: string): string => {
   const text = content.replace(/\s+/g, ' ').trim();

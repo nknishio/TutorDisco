@@ -4,7 +4,6 @@
  */
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../../shared/theme';
 import {
   Badge,
@@ -21,12 +20,12 @@ import { sessionPaymentCents } from '../../../domain/services/earnings';
 import { formatCents } from '../../../shared/utils/money';
 import { formatIsoDate, formatIsoTime, formatDuration } from '../../../shared/utils/datetime';
 import { useAssignmentsStore, useChecklistStore, useSessionsStore } from '../../../store';
-import type { RootStackParamList } from '../../../app/navigation/types';
+import type { StudentsScreenProps } from '../../../app/navigation/types';
 import { SessionFormModal } from '../components/SessionFormModal';
 import { AssignmentFormModal } from '../../assignments/components/AssignmentFormModal';
 import { GenerateEmailModal } from '../../templates/components/GenerateEmailModal';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'SessionDetail'>;
+type Props = StudentsScreenProps<'SessionDetail'>;
 
 const Field = ({ label, value }: { label: string; value: string }) => (
   <HStack justify="space-between" gap={16}>

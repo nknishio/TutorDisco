@@ -7,7 +7,6 @@
  */
 import React, { useEffect, useMemo } from 'react';
 import { ScrollView } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../../shared/theme';
 import {
   BarChart,
@@ -34,9 +33,9 @@ import {
   recentMonthKeys,
 } from '../../../shared/utils/datetime';
 import { usePaymentsStore, useStudentsStore } from '../../../store';
-import type { RootStackParamList } from '../../../app/navigation/types';
+import type { TabScreenProps } from '../../../app/navigation/types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'RevenueDashboard'>;
+type Props = TabScreenProps<'RevenueDashboard'>;
 
 const MONTHS_SHOWN = 6;
 

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Platform, ScrollView, TextInput } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../../shared/theme';
 import { useResponsive } from '../../../shared/responsive';
 import { Button, HStack, Text, VStack } from '../../../shared/ui';
@@ -10,9 +9,9 @@ import { pickBackupFileOnWeb } from '../../../shared/utils/backupFile';
 import { SyncSection } from '../components/SyncSection';
 import type { ThemePreference } from '../../../domain/types';
 import { Select } from '../../../shared/ui';
-import type { RootStackParamList } from '../../../app/navigation/types';
+import type { SettingsScreenProps } from '../../../app/navigation/types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
+type Props = SettingsScreenProps<'Settings'>;
 
 export const SettingsScreen = (_: Props) => {
   const theme = useTheme();

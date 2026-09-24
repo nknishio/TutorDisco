@@ -9,7 +9,6 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../../shared/theme';
 import { useResponsive } from '../../../shared/responsive';
 import {
@@ -28,11 +27,11 @@ import { revenueSummary, sessionPaymentCents } from '../../../domain/services/ea
 import { formatCents } from '../../../shared/utils/money';
 import { formatIsoDate, formatIsoTime, formatDuration, todayIsoDate } from '../../../shared/utils/datetime';
 import { useAssignmentsStore, usePaymentsStore, useSessionsStore, useStudentsStore } from '../../../store';
-import type { RootStackParamList } from '../../../app/navigation/types';
+import type { StudentsScreenProps } from '../../../app/navigation/types';
 import { StudentFormModal } from '../components/StudentFormModal';
 import { SessionFormModal } from '../../sessions/components/SessionFormModal';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'StudentDetail'>;
+type Props = StudentsScreenProps<'StudentDetail'>;
 
 const sessionLabel = (s: SessionStatus) => (s === 'no_show' ? 'No show' : s.charAt(0).toUpperCase() + s.slice(1));
 const statusSelectOptions = SESSION_STATUSES.map((s) => ({ label: sessionLabel(s), value: s }));

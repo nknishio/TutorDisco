@@ -4,7 +4,6 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../../shared/theme';
 import { useResponsive } from '../../../shared/responsive';
 import {
@@ -41,10 +40,10 @@ import {
   useAssignmentsStore,
   useSettingsStore,
 } from '../../../store';
-import type { RootStackParamList } from '../../../app/navigation/types';
+import type { StudentsScreenProps } from '../../../app/navigation/types';
 import { StudentFormModal } from '../components/StudentFormModal';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'StudentsList'>;
+type Props = StudentsScreenProps<'StudentsList'>;
 
 const statusTone = (s: StudentStatus) =>
   s === 'active' ? 'success' : s === 'lead' ? 'info' : s === 'paused' ? 'warning' : 'neutral';
@@ -243,8 +242,8 @@ export const StudentsListScreen = ({ navigation }: Props) => {
                 size="sm"
                 onPress={() => setShowArchived((v) => !v)}
               />
-              <Button label="Settings" variant="ghost" size="sm" onPress={() => navigation.navigate('Settings')} />
-              <Button label="Templates" variant="ghost" size="sm" onPress={() => navigation.navigate('Templates')} />
+              <Button label="Settings" variant="ghost" size="sm" onPress={() => navigation.navigate('SettingsTab', { screen: 'Settings' })} />
+              <Button label="Templates" variant="ghost" size="sm" onPress={() => navigation.navigate('SettingsTab', { screen: 'Templates' })} />
               <Button label="Revenue" variant="ghost" size="sm" onPress={() => navigation.navigate('RevenueDashboard')} />
               <Button label="Payments" variant="secondary" size="sm" onPress={() => navigation.navigate('Payments')} />
               <Button label="Add student" variant="primary" size="sm" onPress={() => setAddOpen(true)} />

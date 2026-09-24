@@ -7,7 +7,6 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../../shared/theme';
 import {
   Badge,
@@ -32,10 +31,10 @@ import {
 import { formatCents } from '../../../shared/utils/money';
 import { formatIsoDate, todayIsoDate } from '../../../shared/utils/datetime';
 import { usePaymentsStore, useSessionsStore, useStudentsStore } from '../../../store';
-import type { RootStackParamList } from '../../../app/navigation/types';
+import type { TabScreenProps } from '../../../app/navigation/types';
 import { PaymentFormModal } from '../components/PaymentFormModal';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Payments'>;
+type Props = TabScreenProps<'Payments'>;
 
 type Filter = 'all' | 'pending' | 'paid' | 'overdue';
 const FILTERS: readonly Filter[] = ['all', 'pending', 'paid', 'overdue'];
