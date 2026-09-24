@@ -31,7 +31,8 @@
           "calendarPermission": "TutorDisco adds and updates tutoring sessions in your calendar."
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-font"
     ]
   }
 }

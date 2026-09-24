@@ -131,9 +131,9 @@ export const CalendarPicker = ({ value, onChange, testID }: CalendarPickerProps)
                 >
                   <Text
                     variant="body"
+                    weight={isToday ? theme.typography.fontWeight.semibold : undefined}
                     style={{
                       color: selected ? theme.colors.onPrimary : theme.colors.text,
-                      fontWeight: isToday ? theme.typography.fontWeight.bold : undefined,
                     }}
                   >
                     {day}

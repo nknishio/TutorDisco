@@ -8,9 +8,10 @@
  * mapping of the same semantic keys, so no component knows which theme is active.
  *
  * Color choices target WCAG AA: body text ≥ 4.5:1, large text/UI ≥ 3:1 against the
- * surface it sits on. `textMuted` and `onPrimary` pairings are chosen to clear 4.5:1.
- * Aesthetic reference: Linear / Stripe Dashboard / Notion — restrained neutrals, a
- * single confident brand accent, soft elevation.
+ * surface it sits on. Ratios in the comments below were measured, not estimated.
+ * Aesthetic reference: a well-kept tutor's notebook — warm paper neutrals, ink text,
+ * hairline rules instead of shadows, a serif reserved for titles and hero numbers,
+ * and one restrained indigo accent used only for actions and selection.
  */
 import { Platform } from 'react-native';
 import type { TextStyle, ViewStyle } from 'react-native';
@@ -19,45 +20,57 @@ import type { TextStyle, ViewStyle } from 'react-native';
 // PRIMITIVES — raw scales. Never referenced directly by components.
 // ===========================================================================
 const palette = {
-  // Neutral (slate) ramp
-  gray: {
+  // Warm neutral ("paper → ink") ramp
+  paper: {
     0: '#ffffff',
-    50: '#f8fafc',
-    100: '#f1f5f9',
-    150: '#eaeff5',
-    200: '#e2e8f0',
-    300: '#cbd5e1',
-    400: '#94a3b8',
-    500: '#64748b',
-    600: '#475569',
-    700: '#334155',
-    800: '#1e293b',
-    850: '#172033',
-    900: '#0f172a',
-    950: '#0a0f1c',
-    975: '#070b14',
-    1000: '#000000',
+    25: '#fdfcf9',
+    50: '#f6f4ef',
+    75: '#f3f1eb',
+    100: '#f0ede6',
+    200: '#e6e1d7',
+    300: '#d4cdbf',
+    400: '#9a9387',
+    500: '#6a645a',
+    // dark-side steps
+    600: '#a6a095',
+    650: '#7a756b',
+    700: '#3d3a34',
+    750: '#2f2d28',
+    800: '#23221e',
+    825: '#201f1b',
+    850: '#1b1a17',
+    900: '#141311',
+    ink: '#1c1a17',
+    inkLight: '#eeebe4',
   },
-  // Brand (violet) ramp — disco purple
-  brand: {
-    50: '#f5f3ff',
-    100: '#ede9fe',
-    200: '#ddd6fe',
-    300: '#c4b5fd',
-    400: '#a78bfa',
-    500: '#8b5cf6',
-    600: '#7c3aed',
-    700: '#6d28d9',
-    800: '#5b21b6',
-    900: '#4c1d95',
+  // Brand (deep indigo) ramp
+  indigo: {
+    50: '#f1f1fa',
+    100: '#e2e1f4',
+    200: '#c6c4ea',
+    300: '#a09ddb',
+    400: '#7a76c9',
+    450: '#6e6ac6',
+    500: '#5b56b5',
+    600: '#46419c',
+    700: '#37337f',
+    800: '#2a2763',
+    900: '#1e1c47',
   },
-  green: { 100: '#dcfce7', 300: '#86efac', 500: '#22c55e', 600: '#16a34a', 700: '#15803d' },
-  red: { 100: '#fee2e2', 300: '#fca5a5', 500: '#ef4444', 600: '#dc2626', 700: '#b91c1c' },
-  amber: { 100: '#fef3c7', 300: '#fcd34d', 500: '#f59e0b', 600: '#d97706', 700: '#b45309' },
-  blue: { 100: '#dbeafe', 300: '#93c5fd', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' },
+  // Desaturated status hues: [light-mode ink, light tint, dark-mode ink]
+  moss: { ink: '#3a7047', tint: '#e5efe6', light: '#7db88a' },
+  ochre: { ink: '#8c5810', tint: '#f6ebd7', light: '#d9a24a' },
+  brick: { ink: '#b0392c', tint: '#f7e3df', light: '#e07a6c', hover: '#962f24', lightHover: '#e8958a' },
+  slate: { ink: '#3b6690', tint: '#e2eaf3', light: '#7fa7cf' },
   // Alpha overlays (theme-agnostic)
-  blackA: { 40: 'rgba(2,6,23,0.40)', 60: 'rgba(2,6,23,0.60)' },
+  blackA: { 40: 'rgba(20,19,17,0.40)', 60: 'rgba(0,0,0,0.60)' },
 } as const;
+
+/** 16% wash of a hex color — dark-mode tints for pills and soft fills. */
+const wash = (hex: string, alpha = 0.16): string => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+};
 
 // ---------------------------------------------------------------------------
 // Spacing — 4px base grid. spacing(n) = n * 4.
@@ -83,24 +96,29 @@ export const space = {
 // ---------------------------------------------------------------------------
 export const radii = {
   none: 0,
-  sm: 6,
-  md: 8,
-  lg: 12,
-  xl: 16,
-  '2xl': 24,
+  sm: 4,
+  md: 6,
+  lg: 10,
+  xl: 14,
+  '2xl': 20,
   pill: 9999,
 } as const;
 
 // ---------------------------------------------------------------------------
-// Typography — system fonts (native feel, zero load cost), one mono fallback.
+// Typography — Plus Jakarta Sans for UI/body, Newsreader (serif) for display titles only.
+//
+// Custom fonts are registered one family per weight (FontGate), so weight is chosen
+// by FAMILY, not `fontWeight`: Android ignores fontWeight on custom faces, and web
+// would faux-bold a face that is already bold. `fontFor()` does the mapping; variants
+// therefore carry `fontFamily` and no `fontWeight`. If the fonts fail to load, the
+// unknown family names fall back to the platform font.
 // ---------------------------------------------------------------------------
 const fontFamily = {
-  sans: Platform.select({
-    ios: 'System',
-    android: 'sans-serif',
-    default:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  }) as string,
+  sans: 'PlusJakartaSans_400Regular',
+  sansMedium: 'PlusJakartaSans_500Medium',
+  sansSemibold: 'PlusJakartaSans_600SemiBold',
+  serif: 'Newsreader_500Medium',
+  serifSemibold: 'Newsreader_600SemiBold',
   mono: Platform.select({
     ios: 'Menlo',
     android: 'monospace',
@@ -115,38 +133,77 @@ const fontWeight = {
   bold: '700',
 } as const satisfies Record<string, TextStyle['fontWeight']>;
 
+export type FontFace = 'sans' | 'serif';
+
+/** Resolve a weight to the loaded family for that face (400 / 500 / 600+). */
+export const fontFor = (weight: TextStyle['fontWeight'], face: FontFace = 'sans'): string => {
+  const w = weight === 'bold' ? 700 : weight === 'normal' || weight == null ? 400 : Number(weight);
+  if (face === 'serif') return w >= 600 ? fontFamily.serifSemibold : fontFamily.serif;
+  if (w >= 600) return fontFamily.sansSemibold;
+  if (w >= 500) return fontFamily.sansMedium;
+  return fontFamily.sans;
+};
+
 const fontSize = {
+  '2xs': 11,
   xs: 12,
   sm: 13,
   md: 15,
-  lg: 17,
-  xl: 20,
-  '2xl': 24,
-  '3xl': 30,
-  '4xl': 38,
+  lg: 16,
+  xl: 18,
+  '2xl': 22,
+  '3xl': 28,
+  '4xl': 36,
 } as const;
 
 /** Ready-to-spread text style variants. Components reference these by name. */
 const textVariants = {
-  display: { fontSize: fontSize['4xl'], lineHeight: 44, fontWeight: fontWeight.bold, letterSpacing: -0.5 },
-  h1: { fontSize: fontSize['3xl'], lineHeight: 38, fontWeight: fontWeight.bold, letterSpacing: -0.4 },
-  h2: { fontSize: fontSize['2xl'], lineHeight: 32, fontWeight: fontWeight.semibold, letterSpacing: -0.3 },
-  h3: { fontSize: fontSize.xl, lineHeight: 28, fontWeight: fontWeight.semibold, letterSpacing: -0.2 },
-  title: { fontSize: fontSize.lg, lineHeight: 24, fontWeight: fontWeight.semibold, letterSpacing: -0.1 },
-  body: { fontSize: fontSize.md, lineHeight: 22, fontWeight: fontWeight.regular, letterSpacing: 0 },
-  bodyStrong: { fontSize: fontSize.md, lineHeight: 22, fontWeight: fontWeight.semibold, letterSpacing: 0 },
-  label: { fontSize: fontSize.sm, lineHeight: 18, fontWeight: fontWeight.medium, letterSpacing: 0 },
-  caption: { fontSize: fontSize.xs, lineHeight: 16, fontWeight: fontWeight.medium, letterSpacing: 0.2 },
-  mono: { fontSize: fontSize.sm, lineHeight: 20, fontWeight: fontWeight.regular, fontFamily: fontFamily.mono },
+  display: { fontSize: fontSize['4xl'], lineHeight: 42, fontFamily: fontFamily.serif, letterSpacing: -0.6 },
+  h1: { fontSize: fontSize['3xl'], lineHeight: 34, fontFamily: fontFamily.serif, letterSpacing: -0.4 },
+  h2: { fontSize: fontSize['2xl'], lineHeight: 28, fontFamily: fontFamily.serif, letterSpacing: -0.2 },
+  h3: { fontSize: fontSize.xl, lineHeight: 24, fontFamily: fontFamily.sansSemibold, letterSpacing: -0.2 },
+  title: { fontSize: fontSize.lg, lineHeight: 22, fontFamily: fontFamily.sansSemibold, letterSpacing: -0.1 },
+  body: { fontSize: fontSize.md, lineHeight: 22, fontFamily: fontFamily.sans, letterSpacing: 0 },
+  bodyStrong: { fontSize: fontSize.md, lineHeight: 22, fontFamily: fontFamily.sansSemibold, letterSpacing: 0 },
+  label: { fontSize: fontSize.sm, lineHeight: 18, fontFamily: fontFamily.sansMedium, letterSpacing: 0 },
+  caption: { fontSize: fontSize.xs, lineHeight: 16, fontFamily: fontFamily.sans, letterSpacing: 0.1 },
+  /** Section labels: small caps-style uppercase. */
+  eyebrow: {
+    fontSize: fontSize['2xs'],
+    lineHeight: 14,
+    fontFamily: fontFamily.sansSemibold,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  mono: { fontSize: fontSize.sm, lineHeight: 20, fontFamily: fontFamily.mono },
 } as const satisfies Record<string, TextStyle>;
 
 export type TextVariant = keyof typeof textVariants;
+
+/** Which face a variant is set in — lets a weight override stay in the same face. */
+export const variantFace = (v: TextVariant): FontFace =>
+  v === 'display' || v === 'h1' || v === 'h2' ? 'serif' : 'sans';
 
 export const typography = {
   fontFamily,
   fontWeight,
   fontSize,
   variants: textVariants,
+} as const;
+
+// ---------------------------------------------------------------------------
+// Icons — one stroke width, three sizes (lucide).
+// ---------------------------------------------------------------------------
+export const iconSize = { sm: 16, md: 20, lg: 24 } as const;
+export const iconStroke = 1.75;
+
+// ---------------------------------------------------------------------------
+// Layout — one page container everywhere (see shared/ui Page).
+// ---------------------------------------------------------------------------
+export const layout = {
+  pageMaxWidth: 1120,
+  gutter: { compact: 16, medium: 24, expanded: 32 },
+  sidebarWidth: 232,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -164,9 +221,9 @@ const makeShadow = (
   elevation: number,
 ): ShadowStyle =>
   Platform.select<ShadowStyle>({
-    web: { boxShadow: `0px ${y}px ${blur}px rgba(2,6,23,${opacity})` },
+    web: { boxShadow: `0px ${y}px ${blur}px rgba(28,26,23,${opacity})` },
     default: {
-      shadowColor: palette.gray[950],
+      shadowColor: palette.paper.ink,
       shadowOffset: { width: 0, height: y },
       shadowOpacity: opacity,
       shadowRadius: blur / 2,
@@ -176,9 +233,12 @@ const makeShadow = (
 
 export const shadows = {
   none: {} as ShadowStyle,
-  sm: makeShadow(1, 3, 0.08, 1),
-  md: makeShadow(4, 12, 0.1, 4),
-  lg: makeShadow(12, 28, 0.16, 12),
+  /** Hairline lift — pairs with a border; the editorial default is no shadow at all. */
+  sm: makeShadow(1, 2, 0.05, 1),
+  /** Popovers, drag lift. */
+  md: makeShadow(6, 16, 0.08, 4),
+  /** Modals and sheets only. */
+  lg: makeShadow(16, 40, 0.14, 12),
 } as const;
 
 // ===========================================================================
@@ -210,9 +270,12 @@ export interface ThemeColors {
   primaryActive: string;
   /** Tinted primary background for soft buttons/badges. */
   primaryMuted: string;
+  /** Primary as TEXT (links, ghost buttons, selected labels) — AA on surface. */
+  primaryText: string;
   onPrimary: string;
 
   danger: string;
+  dangerHover: string;
   dangerMuted: string;
   onDanger: string;
 
@@ -238,100 +301,111 @@ export interface Theme {
   readonly radii: typeof radii;
   readonly typography: typeof typography;
   readonly shadows: typeof shadows;
+  readonly iconSize: typeof iconSize;
+  readonly layout: typeof layout;
 }
 
 export const lightTheme: Theme = {
   name: 'light',
   colors: {
-    background: palette.gray[50],
-    surface: palette.gray[0],
-    surfaceHover: palette.gray[50],
-    surfaceActive: palette.gray[100],
-    surfaceMuted: palette.gray[100],
+    background: palette.paper[50],
+    surface: palette.paper[0],
+    surfaceHover: palette.paper[75],
+    surfaceActive: palette.paper[100],
+    surfaceMuted: palette.paper[100],
 
-    border: palette.gray[200],
-    borderStrong: palette.gray[300],
+    border: palette.paper[200],
+    borderStrong: palette.paper[300],
 
-    text: palette.gray[900], // ~16:1 on surface
-    textMuted: palette.gray[500], // ~4.8:1 on surface — AA body
-    textSubtle: palette.gray[400], // large/UI text only
-    textInverse: palette.gray[0],
+    text: palette.paper.ink, // 17.4:1 on surface
+    textMuted: palette.paper[500], // 5.9:1 surface, 5.0:1 surfaceMuted — AA body
+    textSubtle: palette.paper[400], // 3.0:1 — large/UI text only
+    textInverse: palette.paper[0],
 
-    primary: palette.brand[600],
-    primaryHover: palette.brand[700],
-    primaryActive: palette.brand[800],
-    primaryMuted: palette.brand[50],
-    onPrimary: palette.gray[0], // white on brand600 ≈ 6.5:1
+    primary: palette.indigo[600],
+    primaryHover: palette.indigo[700],
+    primaryActive: palette.indigo[800],
+    primaryMuted: palette.indigo[50],
+    primaryText: palette.indigo[600], // 8.4:1 on surface
+    onPrimary: palette.paper[0], // white on indigo600 8.4:1
 
-    danger: palette.red[600],
-    dangerMuted: palette.red[100],
-    onDanger: palette.gray[0],
+    danger: palette.brick.ink, // 6.1:1 surface, 4.9:1 on its tint
+    dangerHover: palette.brick.hover,
+    dangerMuted: palette.brick.tint,
+    onDanger: palette.paper[0],
 
-    success: palette.green[600],
-    successMuted: palette.green[100],
+    success: palette.moss.ink, // 5.9:1 surface, 5.0:1 on its tint
+    successMuted: palette.moss.tint,
 
-    warning: palette.amber[600],
-    warningMuted: palette.amber[100],
+    warning: palette.ochre.ink, // 6.0:1 surface, 5.1:1 on its tint
+    warningMuted: palette.ochre.tint,
 
-    info: palette.blue[600],
-    infoMuted: palette.blue[100],
+    info: palette.slate.ink, // 6.0:1 surface, 5.0:1 on its tint
+    infoMuted: palette.slate.tint,
 
-    focusRing: palette.brand[500],
+    focusRing: palette.indigo[500],
     overlay: palette.blackA[40],
-    skeleton: palette.gray[150],
+    skeleton: palette.paper[100],
   },
   spacing,
   space,
   radii,
   typography,
   shadows,
+  iconSize,
+  layout,
 };
 
 export const darkTheme: Theme = {
   name: 'dark',
   colors: {
-    background: palette.gray[975],
-    surface: palette.gray[900],
-    surfaceHover: palette.gray[850],
-    surfaceActive: palette.gray[800],
-    surfaceMuted: palette.gray[850],
+    background: palette.paper[900],
+    surface: palette.paper[850],
+    surfaceHover: palette.paper[825],
+    surfaceActive: palette.paper[800],
+    surfaceMuted: palette.paper[800],
 
-    border: palette.gray[800],
-    borderStrong: palette.gray[700],
+    border: palette.paper[750],
+    borderStrong: palette.paper[700],
 
-    text: palette.gray[50], // ~15:1 on surface
-    textMuted: palette.gray[400], // ~6:1 on surface — AA body
-    textSubtle: palette.gray[500],
-    textInverse: palette.gray[900],
+    text: palette.paper.inkLight, // 14.6:1 on surface
+    textMuted: palette.paper[600], // 6.7:1 on surface — AA body
+    textSubtle: palette.paper[650], // 3.8:1 — large/UI text only
+    textInverse: palette.paper.ink,
 
-    primary: palette.brand[500],
-    primaryHover: palette.brand[400],
-    primaryActive: palette.brand[300],
-    primaryMuted: 'rgba(139,92,246,0.16)',
-    onPrimary: palette.gray[0],
+    primary: palette.indigo[450], // fill: white on it 4.6:1
+    primaryHover: palette.indigo[400],
+    primaryActive: palette.indigo[500],
+    primaryMuted: wash(palette.indigo[400]),
+    primaryText: palette.indigo[300], // 6.9:1 on surface
+    onPrimary: palette.paper[0],
 
-    danger: palette.red[500],
-    dangerMuted: 'rgba(239,68,68,0.16)',
-    onDanger: palette.gray[0],
+    danger: palette.brick.light, // 5.9:1 surface
+    dangerHover: palette.brick.lightHover,
+    dangerMuted: wash(palette.brick.light),
+    onDanger: palette.paper.ink,
 
-    success: palette.green[500],
-    successMuted: 'rgba(34,197,94,0.16)',
+    success: palette.moss.light, // 7.5:1 surface
+    successMuted: wash(palette.moss.light),
 
-    warning: palette.amber[500],
-    warningMuted: 'rgba(245,158,11,0.16)',
+    warning: palette.ochre.light, // 7.6:1 surface
+    warningMuted: wash(palette.ochre.light),
 
-    info: palette.blue[500],
-    infoMuted: 'rgba(59,130,246,0.16)',
+    info: palette.slate.light, // 6.9:1 surface
+    infoMuted: wash(palette.slate.light),
 
-    focusRing: palette.brand[400],
+    focusRing: palette.indigo[300],
     overlay: palette.blackA[60],
-    skeleton: palette.gray[850],
+    skeleton: palette.paper[800],
   },
   spacing,
   space,
   radii,
   typography,
-  shadows,
+  // Shadows read as mud on dark surfaces — elevation there is border + surface step.
+  shadows: { none: shadows.none, sm: shadows.none, md: shadows.none, lg: shadows.none },
+  iconSize,
+  layout,
 };
 
 export const themes = { light: lightTheme, dark: darkTheme } as const;

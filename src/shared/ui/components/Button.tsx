@@ -42,7 +42,7 @@ const fills = (t: Theme, v: ButtonVariant) => {
     case 'primary':
       return { bg: t.colors.primary, bgHover: t.colors.primaryHover, bgActive: t.colors.primaryActive, fg: t.colors.onPrimary, border: 'transparent' };
     case 'danger':
-      return { bg: t.colors.danger, bgHover: t.colors.danger, bgActive: t.colors.danger, fg: t.colors.onDanger, border: 'transparent' };
+      return { bg: t.colors.danger, bgHover: t.colors.dangerHover, bgActive: t.colors.dangerHover, fg: t.colors.onDanger, border: 'transparent' };
     case 'secondary':
       return { bg: t.colors.surface, bgHover: t.colors.surfaceHover, bgActive: t.colors.surfaceActive, fg: t.colors.text, border: t.colors.border };
     case 'ghost':

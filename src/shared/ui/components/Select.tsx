@@ -90,7 +90,7 @@ export function Select<T extends string | number>({
                 <HStack justify="space-between" align="center">
                   <Text color={isSelected ? 'primary' : 'text'}>{opt.label}</Text>
                   {isSelected ? (
-                    <Text color="primary" weight={theme.typography.fontWeight.bold}>
+                    <Text color="primaryText" weight={theme.typography.fontWeight.semibold}>
                       ✓
                     </Text>
                   ) : (

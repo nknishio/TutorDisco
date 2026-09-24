@@ -1,11 +1,12 @@
 /**
  * Themed Text primitive. Renders a typography variant in a semantic color.
  * All app text should go through this (never bare react-native <Text>).
+ * Weight is expressed as a font FAMILY (see `fontFor` in theme.ts), never fontWeight.
  */
 import React from 'react';
 import { Text as RNText, type TextProps as RNTextProps, type TextStyle } from 'react-native';
 import { useTheme } from '../../theme';
-import type { TextVariant } from '../../theme/theme';
+import { fontFor, variantFace, type TextVariant } from '../../theme/theme';
 import type { ThemeColors } from '../../theme/theme';
 
 export interface TextProps extends RNTextProps {
@@ -13,7 +14,7 @@ export interface TextProps extends RNTextProps {
   /** Semantic color key (default 'text'). */
   color?: keyof ThemeColors;
   align?: TextStyle['textAlign'];
-  /** Override the variant's weight. */
+  /** Override the variant's weight (resolved to the loaded family for that weight). */
   weight?: TextStyle['fontWeight'];
 }
 
@@ -35,7 +36,7 @@ export const Text = ({
         variantStyle,
         { color: theme.colors[color] },
         align ? { textAlign: align } : null,
-        weight ? { fontWeight: weight } : null,
+        weight ? { fontFamily: fontFor(weight, variantFace(variant)) } : null,
         style,
       ]}
       {...rest}

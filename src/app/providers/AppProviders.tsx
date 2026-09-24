@@ -1,7 +1,8 @@
 /**
  * AppProviders — the composition root.
  *
- * Wraps the tree in error-boundary + safe-area + theme providers, then defers to the
+ * Wraps the tree in error-boundary + safe-area + theme providers, waits for the bundled
+ * fonts (FontGate), then defers to the
  * AuthGate, which restores the last account (pointing the data layer at its database) and
  * shows login/register until a user is signed in. The per-account SQLite database is
  * opened by the auth flow, not here.
@@ -12,6 +13,7 @@ import { ThemeProvider } from '../../shared/theme';
 import { ErrorBoundary } from '../../shared/ui/feedback';
 import { useSettingsStore } from '../../store/settingsStore';
 import { AuthGate } from './AuthGate';
+import { FontGate } from './FontGate';
 
 export const AppProviders = ({ children }: { children: ReactNode }) => {
   const theme = useSettingsStore((s) => s.theme);
@@ -19,7 +21,9 @@ export const AppProviders = ({ children }: { children: ReactNode }) => {
     <ErrorBoundary>
       <SafeAreaProvider>
         <ThemeProvider preference={theme}>
-          <AuthGate>{children}</AuthGate>
+          <FontGate>
+            <AuthGate>{children}</AuthGate>
+          </FontGate>
         </ThemeProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

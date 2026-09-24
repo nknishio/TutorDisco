@@ -17,7 +17,7 @@ export interface BadgeProps {
 const toneColors = (t: Theme, tone: BadgeTone): { bg: string; fg: string } => {
   switch (tone) {
     case 'primary':
-      return { bg: t.colors.primaryMuted, fg: t.colors.primary };
+      return { bg: t.colors.primaryMuted, fg: t.colors.primaryText };
     case 'success':
       return { bg: t.colors.successMuted, fg: t.colors.success };
     case 'warning':
