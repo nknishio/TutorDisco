@@ -15,9 +15,13 @@ export interface PageHeaderProps {
   subtitle?: string;
   eyebrow?: string;
   actions?: ReactNode;
+  /** Element before the title block (e.g. an Avatar on a profile page). */
+  leading?: ReactNode;
+  /** Extra line(s) under the subtitle — status pills, meta. */
+  meta?: ReactNode;
 }
 
-export const PageHeader = ({ title, subtitle, eyebrow, actions }: PageHeaderProps) => {
+export const PageHeader = ({ title, subtitle, eyebrow, actions, leading, meta }: PageHeaderProps) => {
   const theme = useTheme();
   const { isCompact } = useResponsive();
   return (
@@ -29,17 +33,21 @@ export const PageHeader = ({ title, subtitle, eyebrow, actions }: PageHeaderProp
         gap: theme.space.lg,
       }}
     >
-      <VStack gap={theme.space.xs} flex={isCompact ? undefined : 1}>
-        {eyebrow ? (
-          <Text variant="eyebrow" color="textMuted">
-            {eyebrow}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.lg, flex: isCompact ? undefined : 1 }}>
+        {leading}
+        <VStack gap={theme.space.xs} flex={1}>
+          {eyebrow ? (
+            <Text variant="eyebrow" color="textMuted">
+              {eyebrow}
+            </Text>
+          ) : null}
+          <Text variant="h1" accessibilityRole="header">
+            {title}
           </Text>
-        ) : null}
-        <Text variant="h1" accessibilityRole="header">
-          {title}
-        </Text>
-        {subtitle ? <Text color="textMuted">{subtitle}</Text> : null}
-      </VStack>
+          {subtitle ? <Text color="textMuted">{subtitle}</Text> : null}
+          {meta}
+        </VStack>
+      </View>
       {actions ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.sm }}>
           {actions}

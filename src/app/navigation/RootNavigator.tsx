@@ -90,7 +90,13 @@ const StudentsNavigator = () => {
         component={StudentsListScreen}
         options={{ title: 'Students', headerShown: false }}
       />
-      <StudentsStack.Screen name="StudentDetail" component={StudentDetailScreen} options={{ title: 'Student' }} />
+      {/* The profile header is the visible title; `title` (set to the student's name by
+          the screen) still drives the browser tab. */}
+      <StudentsStack.Screen
+        name="StudentDetail"
+        component={StudentDetailScreen}
+        options={{ title: 'Student', headerTitle: '' }}
+      />
       <StudentsStack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ title: 'Session' }} />
     </StudentsStack.Navigator>
   );
