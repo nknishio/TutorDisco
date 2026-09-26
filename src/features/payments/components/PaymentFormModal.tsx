@@ -21,6 +21,7 @@ import { sessionPaymentCents } from '../../../domain/services/earnings';
 import { formatCents, parseDollarsToCents } from '../../../shared/utils/money';
 import { formatIsoDate, todayIsoDate } from '../../../shared/utils/datetime';
 import { isIsoDate } from '../../../shared/utils/time';
+import { labelFor } from '../../../shared/utils/labels';
 import { useFormSubmit } from '../../../shared/hooks';
 import { usePaymentsStore, useSessionsStore, useStudentsStore } from '../../../store';
 
@@ -35,8 +36,7 @@ export interface PaymentFormModalProps {
 
 const NONE = '';
 
-const statusLabel = (s: PaymentStatus) => s.charAt(0).toUpperCase() + s.slice(1);
-const statusOptions = PAYMENT_STATUSES.map((s) => ({ label: statusLabel(s), value: s }));
+const statusOptions = PAYMENT_STATUSES.map((s) => ({ label: labelFor(s), value: s }));
 
 const centsToDollars = (cents: number) => (cents / 100).toFixed(2);
 

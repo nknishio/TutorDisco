@@ -5,9 +5,12 @@
  * Variants: primary (one per screen), secondary (outlined), subtle (tinted indigo),
  * ghost (bare, for toolbars), danger. Pass a lucide icon via `icon` / `trailingIcon`;
  * it is sized and colored to match the label.
+ *
+ * Web: presses call `stopPropagation`, so a button inside a pressable row (DataTable,
+ * ListRow) doesn't also fire the row's press on react-native-web.
  */
 import React from 'react';
-import { ActivityIndicator, Pressable, View, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, View, type GestureResponderEvent, type ViewStyle } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { useTheme } from '../../theme';
 import type { Theme, ThemeColors } from '../../theme/theme';
@@ -91,7 +94,10 @@ export const Button = ({
   return (
     <Pressable
       testID={testID}
-      onPress={onPress}
+      onPress={(e: GestureResponderEvent) => {
+        e.stopPropagation?.();
+        onPress?.();
+      }}
       disabled={isDisabled}
       hitSlop={slop}
       accessibilityRole="button"

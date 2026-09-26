@@ -15,7 +15,8 @@ export interface RankDatum {
   label: string;
   value: number;
   /** Right-aligned formatted value, e.g. '$240.00'. Defaults to the raw number. */
-  valueLabel?: string;
+  valueLabel?: string;  /** Optional solid portion of the bar, same units as `value` (e.g. collected of billed). */
+  filled?: number;
 }
 
 export interface RankBarsProps {
@@ -43,7 +44,7 @@ export const RankBars = ({ data, tone = 'primary', maxRows, height = 8 }: RankBa
                   {d.label}
                 </Text>
               </View>
-              <Text variant="label" color="textMuted">
+              <Text variant="label" color="textMuted" tabular>
                 {d.valueLabel ?? String(d.value)}
               </Text>
             </HStack>
@@ -55,14 +56,28 @@ export const RankBars = ({ data, tone = 'primary', maxRows, height = 8 }: RankBa
                 overflow: 'hidden',
               }}
             >
+              {/* With `filled`, the bar's length is `value` (lighter) and the solid part
+                  is `filled` — e.g. collected of billed. */}
               <View
                 style={{
                   width: `${pct}%`,
                   height: '100%',
                   borderRadius: theme.radii.pill,
-                  backgroundColor: theme.colors[tone],
+                  backgroundColor: d.filled != null ? theme.colors.borderStrong : theme.colors[tone],
+                  overflow: 'hidden',
                 }}
-              />
+              >
+                {d.filled != null ? (
+                  <View
+                    style={{
+                      width: `${d.value > 0 ? Math.min(100, (d.filled / d.value) * 100) : 0}%`,
+                      height: '100%',
+                      borderRadius: theme.radii.pill,
+                      backgroundColor: theme.colors[tone],
+                    }}
+                  />
+                ) : null}
+              </View>
             </View>
           </VStack>
         );

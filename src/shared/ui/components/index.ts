@@ -18,3 +18,5 @@ export { SegmentedControl, type SegmentedControlProps, type SegmentOption } from
 export { ListRow, type ListRowProps } from './ListRow';
 export { Menu, type MenuProps, type MenuItem } from './Menu';
 export { Avatar, initialsOf, type AvatarProps } from './Avatar';
+export { ConfirmDialog, type ConfirmDialogProps } from './ConfirmDialog';
+export { rowRole } from './rowRole';

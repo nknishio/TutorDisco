@@ -13,6 +13,7 @@ import { useResponsive } from '../../responsive';
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react-native';
 import { HStack, Icon, Text, VStack } from '../primitives';
 import { EmptyState } from '../feedback/EmptyState';
+import { rowRole } from './rowRole';
 
 export interface Column<T> {
   id: string;
@@ -106,7 +107,7 @@ export function DataTable<T>({
             </VStack>
           );
           return onRowPress ? (
-            <Pressable key={keyExtractor(row)} onPress={() => onRowPress(row)} accessibilityRole="button">
+            <Pressable key={keyExtractor(row)} onPress={() => onRowPress(row)} accessibilityRole={rowRole}>
               {card}
             </Pressable>
           ) : (
@@ -197,7 +198,7 @@ export function DataTable<T>({
             <Pressable
               key={keyExtractor(row)}
               onPress={() => onRowPress(row)}
-              accessibilityRole="button"
+              accessibilityRole={rowRole}
               style={({ hovered }: { pressed: boolean; hovered?: boolean }) =>
                 hovered ? { backgroundColor: theme.colors.surfaceHover } : null
               }

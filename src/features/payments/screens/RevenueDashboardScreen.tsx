@@ -6,19 +6,23 @@
  * derive from payment rows; charts are dependency-free Views.
  */
 import React, { useEffect, useMemo } from 'react';
-import { ScrollView } from 'react-native';
+import { View } from 'react-native';
 import { useTheme } from '../../../shared/theme';
+import { useResponsive } from '../../../shared/responsive';
 import {
   BarChart,
-  Button,
   Card,
   HStack,
+  Page,
+  PageHeader,
   RankBars,
-  Spinner,
+  Skeleton,
   StatCard,
+  StatGroup,
   Text,
   VStack,
 } from '../../../shared/ui';
+import type { ThemeColors } from '../../../shared/theme/theme';
 import type { Payment } from '../../../domain/types';
 import {
   monthlyRevenueMap,
@@ -39,8 +43,9 @@ type Props = TabScreenProps<'RevenueDashboard'>;
 
 const MONTHS_SHOWN = 6;
 
-export const RevenueDashboardScreen = ({ navigation }: Props) => {
+export const RevenueDashboardScreen = (_props: Props) => {
   const theme = useTheme();
+  const { isCompact } = useResponsive();
 
   const status = usePaymentsStore((s) => s.status);
   const byId = usePaymentsStore((s) => s.byId);
@@ -70,9 +75,15 @@ export const RevenueDashboardScreen = ({ navigation }: Props) => {
     }));
   }, [payments]);
 
-  const thisMonthCents = useMemo(() => {
+  // This month vs. last month, for the headline delta.
+  const { thisMonthCents, lastMonthCents, lastMonthKey } = useMemo(() => {
     const map = monthlyRevenueMap(payments);
-    return map.get(currentMonthKey())?.paidCents ?? 0;
+    const [prevKey, curKey] = recentMonthKeys(2) as [string, string];
+    return {
+      thisMonthCents: map.get(curKey)?.paidCents ?? 0,
+      lastMonthCents: map.get(prevKey)?.paidCents ?? 0,
+      lastMonthKey: prevKey,
+    };
   }, [payments]);
 
   const perStudent = useMemo(
@@ -83,6 +94,7 @@ export const RevenueDashboardScreen = ({ navigation }: Props) => {
           id: r.studentId as string,
           label: studentsById[r.studentId]?.name ?? 'Unknown',
           value: r.billedCents,
+          filled: r.paidCents,
           valueLabel: `${formatCents(r.paidCents)} of ${formatCents(r.billedCents)}`,
         })),
     [payments, studentsById],
@@ -91,70 +103,109 @@ export const RevenueDashboardScreen = ({ navigation }: Props) => {
   const lifetimeBilled = totals.paidCents + totals.outstandingCents;
   const loading = status === 'loading' && payments.length === 0;
 
-  return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      contentContainerStyle={{ alignItems: 'center' }}
-    >
-      <VStack gap={theme.space.lg} style={{ width: '100%', maxWidth: 1080, padding: theme.space.lg }}>
-        <HStack justify="space-between" align="center" wrap gap={theme.space.md}>
-          <Text variant="h2">Revenue</Text>
-          <Button label="Manage payments" variant="secondary" size="sm" onPress={() => navigation.navigate('Payments')} />
-        </HStack>
+  const monthDelta = thisMonthCents - lastMonthCents;
+  const deltaText =
+    lastMonthCents === 0 && thisMonthCents === 0
+      ? undefined
+      : `${monthDelta >= 0 ? '+' : '−'}${formatCents(Math.abs(monthDelta))} vs ${formatMonthShort(lastMonthKey)}`;
 
-        {loading ? (
-          <Spinner fill />
-        ) : (
-          <>
-            {/* Headline metrics */}
-            <HStack gap={theme.space.lg} wrap>
-              <StatCard label="Total revenue" value={formatCents(totals.paidCents)} />
-              <StatCard label={`This month (${formatMonthShort(currentMonthKey())})`} value={formatCents(thisMonthCents)} />
-              <StatCard label="Outstanding" value={formatCents(totals.outstandingCents)} positiveIsGood={false} />
-              <StatCard label="Lifetime billed" value={formatCents(lifetimeBilled)} />
+  const breakdown: { label: string; count?: number; cents: number; tone: keyof ThemeColors }[] = [
+    { label: 'Collected', count: totals.paidCount, cents: totals.paidCents, tone: 'success' },
+    { label: 'Pending', count: totals.pendingCount, cents: totals.pendingCents, tone: 'warning' },
+    { label: 'Overdue', count: totals.overdueCount, cents: totals.overdueCents, tone: 'danger' },
+  ];
+
+  const perStudentCard = (
+    <Card title="By student" subtitle="Collected of billed">
+      {perStudent.length === 0 ? (
+        <Text color="textMuted">Nothing billed yet.</Text>
+      ) : (
+        <RankBars data={perStudent} tone="success" maxRows={12} />
+      )}
+    </Card>
+  );
+
+  const breakdownCard = (
+    <Card title="Breakdown">
+      <VStack>
+        {breakdown.map((b, i) => (
+          <HStack
+            key={b.label}
+            justify="space-between"
+            align="center"
+            style={{
+              paddingTop: i ? theme.space.md : 0,
+              paddingBottom: theme.space.md,
+              borderTopWidth: i ? 1 : 0,
+              borderTopColor: theme.colors.border,
+            }}
+          >
+            <HStack gap={theme.space.sm} align="center">
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors[b.tone] }} />
+              <Text>{b.label}</Text>
+              <Text variant="label" color="textMuted">
+                {b.count}
+              </Text>
             </HStack>
-
-            {/* Monthly revenue trend */}
-            <Card
-              title="Monthly revenue"
-              subtitle={`Collected over the last ${MONTHS_SHOWN} months`}
-            >
-              <BarChart data={monthSeries} formatValue={(v) => formatCents(v)} tone="primary" />
-            </Card>
-
-            {/* Revenue per student */}
-            <Card title="Revenue per student" subtitle="Collected of total billed, by student">
-              {perStudent.length === 0 ? (
-                <Text color="textMuted">No billed payments yet.</Text>
-              ) : (
-                <RankBars data={perStudent} tone="success" maxRows={12} />
-              )}
-            </Card>
-
-            {/* Breakdown */}
-            <Card title="Breakdown">
-              <VStack gap={theme.space.md}>
-                <HStack justify="space-between">
-                  <Text color="textMuted">Collected ({totals.paidCount})</Text>
-                  <Text variant="bodyStrong" color="success">{formatCents(totals.paidCents)}</Text>
-                </HStack>
-                <HStack justify="space-between">
-                  <Text color="textMuted">Pending ({totals.pendingCount})</Text>
-                  <Text variant="bodyStrong" color="warning">{formatCents(totals.pendingCents)}</Text>
-                </HStack>
-                <HStack justify="space-between">
-                  <Text color="textMuted">Overdue ({totals.overdueCount})</Text>
-                  <Text variant="bodyStrong" color="danger">{formatCents(totals.overdueCents)}</Text>
-                </HStack>
-                <HStack justify="space-between">
-                  <Text variant="bodyStrong">Current month ({formatMonthLong(currentMonthKey())})</Text>
-                  <Text variant="bodyStrong">{formatCents(thisMonthCents)}</Text>
-                </HStack>
-              </VStack>
-            </Card>
-          </>
-        )}
+            <Text variant="bodyStrong" tabular>
+              {formatCents(b.cents)}
+            </Text>
+          </HStack>
+        ))}
+        <HStack
+          justify="space-between"
+          align="center"
+          style={{ paddingTop: theme.space.md, borderTopWidth: 1, borderTopColor: theme.colors.borderStrong }}
+        >
+          <Text variant="bodyStrong">{formatMonthLong(currentMonthKey())}</Text>
+          <Text variant="bodyStrong" tabular>
+            {formatCents(thisMonthCents)}
+          </Text>
+        </HStack>
       </VStack>
-    </ScrollView>
+    </Card>
+  );
+
+  return (
+    <Page safeTop>
+      <PageHeader title="Revenue" subtitle="Collected payments, by month and by student." />
+
+      {loading ? (
+        <VStack gap={theme.space.lg}>
+          <Skeleton height={112} radius={theme.radii.lg} />
+          <Skeleton height={240} radius={theme.radii.lg} />
+        </VStack>
+      ) : (
+        <>
+          <StatGroup>
+            <StatCard label="Collected to date" value={formatCents(totals.paidCents)} />
+            <StatCard
+              label="This month"
+              value={formatCents(thisMonthCents)}
+              delta={deltaText}
+              trend={monthDelta > 0 ? 'up' : monthDelta < 0 ? 'down' : 'flat'}
+            />
+            <StatCard label="Outstanding" value={formatCents(totals.outstandingCents)} hint="Pending and overdue" />
+            <StatCard label="Lifetime billed" value={formatCents(lifetimeBilled)} />
+          </StatGroup>
+
+          <Card title="Monthly revenue" subtitle={`Collected, last ${MONTHS_SHOWN} months`}>
+            <BarChart data={monthSeries} formatValue={(v) => formatCents(v)} tone="primary" />
+          </Card>
+
+          {isCompact ? (
+            <>
+              {perStudentCard}
+              {breakdownCard}
+            </>
+          ) : (
+            <HStack gap={theme.space.xl} align="flex-start">
+              <View style={{ flex: 3, minWidth: 0 }}>{perStudentCard}</View>
+              <View style={{ flex: 2, minWidth: 0 }}>{breakdownCard}</View>
+            </HStack>
+          )}
+        </>
+      )}
+    </Page>
   );
 };

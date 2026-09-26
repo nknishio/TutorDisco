@@ -8,6 +8,7 @@ import React, { type PropsWithChildren, type ReactNode } from 'react';
 import { Pressable, View, type ViewStyle } from 'react-native';
 import { useTheme } from '../../theme';
 import { HStack, Text, VStack } from '../primitives';
+import { rowRole } from './rowRole';
 
 export type CardElevation = 'none' | 'sm' | 'md' | 'lg';
 
@@ -116,7 +117,7 @@ export const Card = ({
       <Pressable
         testID={testID}
         onPress={onPress}
-        accessibilityRole="button"
+        accessibilityRole={rowRole}
         style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
           base,
           hovered ? { borderColor: theme.colors.borderStrong } : null,

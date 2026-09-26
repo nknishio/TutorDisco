@@ -64,7 +64,7 @@ const linking: LinkingOptions<MainTabParamList> = {
   },
 };
 
-/** Header shared by stack screens and tab screens: paper background, no rule. */
+/** Header for stack screens: paper background, no rule. */
 const headerOptions = (theme: Theme) => ({
   headerStyle: { backgroundColor: theme.colors.background },
   headerTintColor: theme.colors.text,
@@ -161,8 +161,8 @@ export const RootNavigator = () => {
         screenOptions={({ route }) => {
           const meta = TAB_META[route.name];
           return {
-            ...headerOptions(theme),
-            headerStyle: { backgroundColor: theme.colors.background, borderBottomWidth: 0, elevation: 0, shadowOpacity: 0 },
+            // Stacks draw their own headers; tab screens render a PageHeader.
+            headerShown: false,
             tabBarPosition: isExpanded ? 'left' : 'bottom',
             title: meta.label,
             tabBarLabel: meta.label,
@@ -188,11 +188,10 @@ export const RootNavigator = () => {
           };
         }}
       >
-        {/* Stacks draw their own headers. */}
-        <Tab.Screen name="StudentsTab" component={StudentsNavigator} options={{ headerShown: false }} />
+        <Tab.Screen name="StudentsTab" component={StudentsNavigator} />
         <Tab.Screen name="Payments" component={PaymentsScreen} />
         <Tab.Screen name="RevenueDashboard" component={RevenueDashboardScreen} />
-        <Tab.Screen name="SettingsTab" component={SettingsNavigator} options={{ headerShown: false }} />
+        <Tab.Screen name="SettingsTab" component={SettingsNavigator} />
       </Tab.Navigator>
     </NavigationContainer>
   );

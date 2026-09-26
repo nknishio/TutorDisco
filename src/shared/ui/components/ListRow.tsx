@@ -9,6 +9,7 @@ import { Pressable, View, type ViewStyle } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../../theme';
 import { Icon, Text, VStack } from '../primitives';
+import { rowRole } from './rowRole';
 
 export interface ListRowProps {
   title: string;
@@ -85,7 +86,7 @@ export const ListRow = ({
     <Pressable
       testID={testID}
       onPress={onPress}
-      accessibilityRole="button"
+      accessibilityRole={rowRole}
       accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
       style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
         base,

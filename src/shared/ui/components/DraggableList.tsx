@@ -19,6 +19,7 @@ import { useResponsive } from '../../responsive';
 import { GripVertical } from 'lucide-react-native';
 import { HStack, Icon, Text, VStack } from '../primitives';
 import type { Column } from './Table';
+import { rowRole } from './rowRole';
 
 export interface DraggableListProps<T> {
   data: ReadonlyArray<T>;
@@ -278,7 +279,7 @@ export function DraggableList<T>({
                 {handle(index, 'Drag')}
                 <View style={{ flex: 1 }} />
               </HStack>
-              <Pressable disabled={isDragging} onPress={() => onRowPress?.(row)} accessibilityRole="button">
+              <Pressable disabled={isDragging} onPress={() => onRowPress?.(row)} accessibilityRole={rowRole}>
                 <VStack gap={theme.space.sm}>
                   {cols
                     .filter((c) => !c.hideOnCompact)
@@ -348,7 +349,7 @@ export function DraggableList<T>({
             <Pressable
               disabled={isDragging}
               onPress={() => onRowPress?.(row)}
-              accessibilityRole="button"
+              accessibilityRole={rowRole}
               style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
             >
               {cols.map((col) => (
