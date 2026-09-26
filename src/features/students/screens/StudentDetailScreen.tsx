@@ -8,13 +8,15 @@
  * column and the details/notes card sits on the right; on phones they stack with
  * history first so it isn't buried.
  *
- * Each history entry is a dated row: a calendar-style date column, time/length/fee,
- * a status pill that doubles as the status picker, assignment previews (collapsible,
- * expanded by default), and an overflow menu for the rarer actions. "Mark paid"
- * stays visible because it's the common follow-up after a completed session.
+ * Each history entry is a dated row — tap anywhere on it to open the session. It shows
+ * time/length/fee, a status pill that doubles as the status picker, assignment
+ * previews (collapsible, expanded by default), and ONE next-step button that follows
+ * the session's lifecycle: "Mark complete" while scheduled, then "Mark paid" once
+ * completed, then nothing once paid. Rarer actions (unmark paid, delete) live in the
+ * overflow menu.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, View, type GestureResponderEvent } from 'react-native';
 import {
   Archive,
   CalendarPlus,
@@ -22,11 +24,9 @@ import {
   ChevronDown,
   ChevronRight,
   CircleDollarSign,
-  ExternalLink,
   Pencil,
   Trash2,
   Undo2,
-  X,
 } from 'lucide-react-native';
 import { useTheme } from '../../../shared/theme';
 import { useResponsive } from '../../../shared/responsive';
@@ -47,12 +47,13 @@ import {
   StatGroup,
   Text,
   VStack,
+  rowRole,
   type BadgeTone,
   type MenuItem,
 } from '../../../shared/ui';
-import type { Assignment, Session, SessionStatus, StudentStatus } from '../../../domain/types';
+import type { Assignment, Payment, Session, SessionStatus, StudentStatus } from '../../../domain/types';
 import { SESSION_STATUSES } from '../../../domain/types';
-import { revenueSummary, sessionPaymentCents } from '../../../domain/services/earnings';
+import { revenueSummary, sessionPaymentCents, studentBalance } from '../../../domain/services/earnings';
 import { formatCents } from '../../../shared/utils/money';
 import { formatIsoDate, formatIsoTime, formatDuration, todayIsoDate } from '../../../shared/utils/datetime';
 import { labelFor } from '../../../shared/utils/labels';
@@ -125,7 +126,14 @@ const AssignmentPreview = ({ assignment }: { assignment: Assignment }) => {
   return (
     <VStack gap={theme.space.xs}>
       <Pressable
-        onPress={hasDetails ? () => setExpanded((v) => !v) : undefined}
+        onPress={
+          hasDetails
+            ? (e: GestureResponderEvent) => {
+                e.stopPropagation?.(); // don't also open the session (web)
+                setExpanded((v) => !v);
+              }
+            : undefined
+        }
         disabled={!hasDetails}
         accessibilityRole={hasDetails ? 'button' : undefined}
         accessibilityState={hasDetails ? { expanded } : undefined}
@@ -201,61 +209,56 @@ const SessionHistoryEntry = ({
     onSelect: () => onChangeStatus(st),
   }));
 
+  // Other status changes (cancel, no-show, reopen) go through the status pill.
   const moreItems: MenuItem[] = [
-    { label: 'Open session', icon: ExternalLink, onSelect: onOpen },
-    ...(session.status !== 'completed'
-      ? [{ label: 'Mark complete', icon: Check, onSelect: () => onChangeStatus('completed') }]
-      : []),
-    ...(session.status === 'scheduled'
-      ? [{ label: 'Cancel session', icon: X, onSelect: () => onChangeStatus('cancelled') }]
-      : []),
     ...(paid ? [{ label: 'Unmark paid', icon: Undo2, onSelect: onUnmarkPaid }] : []),
     { label: 'Delete session', icon: Trash2, destructive: true, onSelect: () => setConfirmDelete(true) },
   ];
 
+  // The one next step for this session, if any.
+  const nextStep =
+    session.status === 'scheduled' ? (
+      <Button
+        label="Mark complete"
+        size="sm"
+        variant="subtle"
+        icon={Check}
+        onPress={() => onChangeStatus('completed')}
+      />
+    ) : session.status === 'completed' && !paid ? (
+      <Button label="Mark paid" size="sm" variant="subtle" icon={CircleDollarSign} onPress={onMarkPaid} loading={payingBusy} />
+    ) : null;
+
+  // The whole entry opens the session. Controls inside it (next-step button, menu,
+  // status pill, assignment toggles) stop propagation so they don't also navigate.
   return (
-    <View
-      style={{
+    <Pressable
+      onPress={onOpen}
+      accessibilityRole={rowRole}
+      accessibilityLabel={`${session.title}, ${formatIsoDate(session.date)} at ${formatIsoTime(session.startTime)}. Open session`}
+      style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => ({
         flexDirection: 'row',
         gap: theme.space.lg,
         padding: theme.space.lg,
         borderTopWidth: first ? 0 : 1,
         borderTopColor: theme.colors.border,
-      }}
+        backgroundColor: pressed ? theme.colors.surfaceActive : hovered ? theme.colors.surfaceHover : 'transparent',
+      })}
     >
-      <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`Open session on ${formatIsoDate(session.date)}`}>
-        <DateBlock date={session.date} />
-      </Pressable>
+      <DateBlock date={session.date} />
 
       <VStack gap={theme.space.sm} flex={1}>
-        {/* The time line opens the session; the pills and assignment rows are
-            siblings (not nested in this Pressable) so they don't navigate. */}
         <HStack justify="space-between" align="flex-start" gap={theme.space.sm}>
-          <Pressable
-            onPress={onOpen}
-            accessibilityRole="button"
-            accessibilityLabel={`Open session on ${formatIsoDate(session.date)}`}
-            style={{ flex: 1 }}
-          >
-            {({ hovered }: { pressed: boolean; hovered?: boolean }) => (
-              <VStack gap={2}>
-                <Text
-                  variant="bodyStrong"
-                  tabular
-                  style={hovered ? { textDecorationLine: 'underline' } : undefined}
-                >
-                  {formatIsoTime(session.startTime)}
-                </Text>
-                <Text variant="label" color="textMuted" tabular>
-                  {formatDuration(session.duration)} · {formatCents(sessionPaymentCents(session))}
-                </Text>
-              </VStack>
-            )}
-          </Pressable>
+          <VStack gap={2} flex={1}>
+            <Text variant="bodyStrong" tabular>
+              {formatIsoTime(session.startTime)}
+            </Text>
+            <Text variant="label" color="textMuted" tabular>
+              {formatDuration(session.duration)} · {formatCents(sessionPaymentCents(session))}
+            </Text>
+          </VStack>
           <HStack gap={theme.space.xs} align="center">
-            {session.status === 'completed' && !paid ? (
-              <Button label="Mark paid" size="sm" variant="subtle" icon={CircleDollarSign} onPress={onMarkPaid} loading={payingBusy} />
-            ) : null}
+            {nextStep}
             <Menu items={moreItems} accessibilityLabel="Session actions" />
           </HStack>
         </HStack>
@@ -266,7 +269,10 @@ const SessionHistoryEntry = ({
             items={statusItems}
             renderTrigger={(open) => (
               <Pressable
-                onPress={() => open()}
+                onPress={(e: GestureResponderEvent) => {
+                  e.stopPropagation?.(); // don't also open the session (web)
+                  open();
+                }}
                 accessibilityRole="button"
                 accessibilityLabel={`Status: ${labelFor(session.status)}. Change status`}
                 hitSlop={8}
@@ -328,7 +334,7 @@ const SessionHistoryEntry = ({
           </HStack>
         ) : null}
       </VStack>
-    </View>
+    </Pressable>
   );
 };
 
@@ -414,6 +420,15 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
   }, [sessions, assignmentsBySession, assignmentsById]);
 
   const summary = useMemo(() => revenueSummary(sessions), [sessions]);
+  // The payments cache can also hold other students' rows (Payments tab), so scope it.
+  const balance = useMemo(
+    () =>
+      studentBalance(
+        sessions,
+        paymentsOrder.map((id) => paymentsById[id]).filter((p): p is Payment => p?.studentId === studentId),
+      ),
+    [sessions, paymentsOrder, paymentsById, studentId],
+  );
 
   useEffect(() => {
     if (student) navigation.setOptions({ title: student.name });
@@ -462,11 +477,28 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
   );
 
   const stats = (
+    // Money first, answering "has this family paid me?", then the teaching record.
     <StatGroup>
-      <StatCard label="Earned" value={formatCents(summary.completedCents)} />
-      <StatCard label="Projected" value={formatCents(summary.scheduledCents)} />
-      <StatCard label="Hours taught" value={(summary.completedMinutes / 60).toFixed(1)} />
-      <StatCard label="Sessions done" value={String(summary.completedCount)} />
+      <StatCard label="Collected" value={formatCents(balance.collectedCents)} />
+      <StatCard
+        label="Owed"
+        value={formatCents(balance.owedCents)}
+        hint={
+          balance.owedSessionCount
+            ? `${balance.owedSessionCount} unpaid session${balance.owedSessionCount === 1 ? '' : 's'}`
+            : 'All paid up'
+        }
+      />
+      <StatCard
+        label="Upcoming"
+        value={formatCents(summary.scheduledCents)}
+        hint={`${summary.scheduledCount} scheduled`}
+      />
+      <StatCard
+        label="Sessions done"
+        value={String(summary.completedCount)}
+        hint={`${(summary.completedMinutes / 60).toFixed(1)} hours taught`}
+      />
     </StatGroup>
   );
 

@@ -6,6 +6,7 @@
  * show earned (completed) vs. projected (scheduled) separately.
  */
 import type { Cents } from '../types/common';
+import type { Payment } from '../types/payment';
 import type { Session } from '../types/session';
 
 /** Prorated payment for a single session: rate × (minutes / 60), rounded to the cent. */
@@ -59,3 +60,53 @@ export const revenueSummary = (sessions: readonly Session[]): RevenueSummary =>
     // cancelled / no_show contribute nothing.
     return acc;
   }, ZERO);
+
+export interface StudentBalance {
+  /** Money actually received (paid payments). */
+  readonly collectedCents: Cents;
+  /**
+   * Money earned but not yet received: every completed session that isn't paid —
+   * using its pending/overdue payment's amount when one exists, otherwise the
+   * session's expected payment (it simply hasn't been billed yet) — plus any
+   * unpaid ad-hoc payments.
+   */
+  readonly owedCents: Cents;
+  /** How many completed sessions are still unpaid. */
+  readonly owedSessionCount: number;
+}
+
+/**
+ * Where a student's money stands, from their sessions and payments. Answers "has this
+ * family paid me?" without requiring completed sessions to have been billed first.
+ * Cancelled payments count for nothing; a session with any paid payment is settled.
+ */
+export const studentBalance = (sessions: readonly Session[], payments: readonly Payment[]): StudentBalance => {
+  const live = payments.filter((p) => p.status !== 'cancelled');
+  const bySession = new Map<string, Payment[]>();
+  let collected = 0;
+  let owed = 0;
+  for (const p of live) {
+    if (p.status === 'paid') collected += p.amount;
+    if (p.sessionId) bySession.set(p.sessionId, [...(bySession.get(p.sessionId) ?? []), p]);
+  }
+
+  const sessionIds = new Set(sessions.map((s) => s.id as string));
+  let owedSessionCount = 0;
+  for (const s of sessions) {
+    if (s.status !== 'completed') continue;
+    const forSession = bySession.get(s.id) ?? [];
+    if (forSession.some((p) => p.status === 'paid')) continue;
+    const pending = forSession[0];
+    owed += pending ? pending.amount : sessionPaymentCents(s);
+    owedSessionCount += 1;
+  }
+  // Unpaid payments not tied to one of these completed sessions (ad-hoc, or a
+  // session that's no longer listed) still count as owed.
+  for (const p of live) {
+    if (p.status === 'paid') continue;
+    if (p.sessionId && sessionIds.has(p.sessionId)) continue;
+    owed += p.amount;
+  }
+
+  return { collectedCents: collected as Cents, owedCents: owed as Cents, owedSessionCount };
+};
