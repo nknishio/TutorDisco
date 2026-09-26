@@ -34,6 +34,10 @@ export interface TextFieldProps
       | 'onFocus'
       | 'onSelectionChange'
       | 'selection'
+      | 'onSubmitEditing'
+      | 'returnKeyType'
+      | 'autoComplete'
+      | 'textContentType'
     > {
   /** Render as a multi-line textarea. */
   multiline?: boolean;

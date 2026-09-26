@@ -8,14 +8,20 @@
  * block saving the session.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
+import { CalendarCheck, Plus, X } from 'lucide-react-native';
 import { useTheme } from '../../../shared/theme';
 import { useResponsive } from '../../../shared/responsive';
 import {
   Button,
   CalendarPicker,
+  Checkbox,
+  Chip,
   HStack,
+  Icon,
+  IconButton,
   Modal,
+  Section,
   Select,
   Switch,
   TextField,
@@ -284,13 +290,15 @@ export const SessionFormModal = ({
   const dateField = (
     <VStack gap={theme.space.sm}>
       <HStack justify="space-between" align="center">
-        <Text variant="label" color="textMuted">Date</Text>
-        <Text variant="bodyStrong">{formatIsoDate(date)}</Text>
+        <Text variant="label">Date</Text>
+        <Text variant="label" color="textMuted" tabular>
+          {formatIsoDate(date)}
+        </Text>
       </HStack>
       <View
         style={{
           borderWidth: 1,
-          borderColor: theme.colors.border,
+          borderColor: theme.colors.borderStrong,
           borderRadius: theme.radii.lg,
           padding: theme.space.md,
           backgroundColor: theme.colors.surface,
@@ -327,95 +335,70 @@ export const SessionFormModal = ({
         </HStack>
       }
     >
-      <VStack gap={theme.space.lg}>
+      <VStack gap={theme.space['2xl']}>
         {formError ? <Text color="danger">{formError}</Text> : null}
 
-        <TextField label="Title" value={title} onChangeText={setTitle} />
+        <Section title="Schedule">
+          <TextField label="Title" value={title} onChangeText={setTitle} />
 
-        {isCompact ? (
-          // Phone: stacked, with two-up rows.
-          <VStack gap={theme.space.lg}>
-            {dateField}
-            <HStack gap={theme.space.lg}>
-              <VStack flex={1}>{startField}</VStack>
-              <VStack flex={1}>{durationField}</VStack>
-            </HStack>
-            <HStack gap={theme.space.lg}>
-              <VStack flex={1}>{rateField}</VStack>
-              <VStack flex={1}>{locationField}</VStack>
-            </HStack>
-            {statusField}
-          </VStack>
-        ) : (
-          // Web/tablet: calendar on the left, scheduling fields on the right.
-          <HStack gap={theme.space.lg} align="flex-start">
-            <View style={{ flex: 1 }}>{dateField}</View>
-            <VStack flex={1} gap={theme.space.lg}>
-              {startField}
-              {durationField}
-              {rateField}
-              {locationField}
+          {isCompact ? (
+            // Phone: stacked, with two-up rows.
+            <VStack gap={theme.space.lg}>
+              {dateField}
+              <HStack gap={theme.space.lg}>
+                <VStack flex={1}>{startField}</VStack>
+                <VStack flex={1}>{durationField}</VStack>
+              </HStack>
+              <HStack gap={theme.space.lg}>
+                <VStack flex={1}>{rateField}</VStack>
+                <VStack flex={1}>{locationField}</VStack>
+              </HStack>
               {statusField}
             </VStack>
-          </HStack>
-        )}
+          ) : (
+            // Web/tablet: calendar on the left, scheduling fields on the right.
+            <HStack gap={theme.space.lg} align="flex-start">
+              <View style={{ flex: 1 }}>{dateField}</View>
+              <VStack flex={1} gap={theme.space.lg}>
+                {startField}
+                {durationField}
+                {rateField}
+                {locationField}
+                {statusField}
+              </VStack>
+            </HStack>
+          )}
+        </Section>
 
         {/* Default checklist — applied to new sessions; customizable here. */}
         {!isEdit ? (
-          <VStack
-            gap={theme.space.md}
-            style={{
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              borderRadius: theme.radii.lg,
-              padding: theme.space.lg,
-            }}
+          <Section
+            title="Session checklist"
+            description="Applied to every new session. Uncheck an item to skip it this time."
           >
-            <VStack gap={2}>
-              <Text variant="bodyStrong">Session checklist</Text>
-              <Text variant="caption" color="textMuted">
-                Applied to every new session. Uncheck to skip one this time, or add your own default.
-              </Text>
-            </VStack>
-
             {defaultChecklistItems.length === 0 ? (
-              <Text variant="caption" color="textMuted">No default items yet. Add one below.</Text>
+              <Text variant="label" color="textMuted">
+                No default items yet. Add one below.
+              </Text>
             ) : (
-              <VStack gap={theme.space.sm}>
-                {defaultChecklistItems.map((item) => {
-                  const included = !skippedChecklist[item];
-                  return (
-                    <HStack key={item} gap={theme.space.md} align="center">
-                      <Pressable
-                        onPress={() => toggleDefaultItem(item)}
-                        accessibilityRole="checkbox"
-                        accessibilityState={{ checked: included }}
-                        accessibilityLabel={item}
-                        style={{
-                          width: 22,
-                          height: 22,
-                          borderRadius: theme.radii.sm,
-                          borderWidth: 2,
-                          borderColor: included ? theme.colors.primary : theme.colors.borderStrong,
-                          backgroundColor: included ? theme.colors.primary : 'transparent',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        {included ? <Text style={{ color: theme.colors.onPrimary }}>✓</Text> : null}
-                      </Pressable>
-                      <Text
-                        style={[
-                          { flex: 1 },
-                          included ? null : { color: theme.colors.textMuted, textDecorationLine: 'line-through' },
-                        ]}
-                      >
-                        {item}
-                      </Text>
-                      <Button label="Remove" variant="ghost" size="sm" onPress={() => removeDefaultItem(item)} />
-                    </HStack>
-                  );
-                })}
+              <VStack>
+                {defaultChecklistItems.map((item) => (
+                  <HStack key={item} gap={theme.space.sm} align="center">
+                    <View style={{ flex: 1 }}>
+                      <Checkbox
+                        label={item}
+                        checked={!skippedChecklist[item]}
+                        onChange={() => toggleDefaultItem(item)}
+                      />
+                    </View>
+                    <IconButton
+                      icon={X}
+                      size="sm"
+                      accessibilityLabel={`Remove “${item}” from default checklist`}
+                      onPress={() => removeDefaultItem(item)}
+                    />
+                  </HStack>
+                ))}
               </VStack>
             )}
 
@@ -424,112 +407,94 @@ export const SessionFormModal = ({
                 <TextField
                   value={newChecklistItem}
                   onChangeText={setNewChecklistItem}
-                  placeholder="Add a default checklist item…"
+                  onSubmitEditing={addDefaultItem}
+                  returnKeyType="done"
+                  placeholder="Add a default checklist item"
                 />
               </View>
-              <Button label="Add" variant="secondary" onPress={addDefaultItem} />
+              <Button label="Add" variant="secondary" icon={Plus} onPress={addDefaultItem} />
             </HStack>
-          </VStack>
+          </Section>
         ) : null}
 
         {/* Calendar section */}
-        <VStack
-          gap={theme.space.md}
-          style={{
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            borderRadius: theme.radii.lg,
-            padding: theme.space.lg,
-          }}
-        >
-          <Text variant="bodyStrong">Calendar</Text>
+        <Section title="Calendar">
 
-          <Switch
-            label="SAT Mode"
-            description="Titles events “{Name} SAT Tutor” instead of “{Name} Tutoring”."
-            value={satMode}
-            onValueChange={(v) => void setSatMode(v)}
-          />
-
-          <HStack justify="space-between" align="center">
-            <Text color="textMuted">Event title</Text>
-            <Text variant="bodyStrong">{eventTitle}</Text>
-          </HStack>
-
-          <Select
-            label="Provider"
-            value={providerId}
-            options={providerOptions}
-            onChange={(id) => setProvider(id)}
-          />
-
-          {/* Alerts / reminders */}
-          <VStack gap={theme.space.sm}>
-            <Text variant="label" color="textMuted">Alerts</Text>
-            <HStack gap={theme.space.sm} wrap>
-              {ALERT_PRESETS.map((minutes) => {
-                const on = selectedAlerts.includes(minutes);
-                return (
-                  <Pressable
-                    key={minutes}
-                    onPress={() => toggleAlert(minutes)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: on }}
-                    accessibilityLabel={alertLabel(minutes)}
-                    style={{
-                      paddingVertical: 6,
-                      paddingHorizontal: theme.space.md,
-                      borderRadius: theme.radii.md,
-                      borderWidth: 1,
-                      borderColor: on ? theme.colors.primary : theme.colors.border,
-                      backgroundColor: on ? theme.colors.primary : 'transparent',
-                    }}
-                  >
-                    <Text style={{ color: on ? theme.colors.onPrimary : theme.colors.text }}>
-                      {alertLabel(minutes)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </HStack>
-            {alertsAreDefault ? (
-              <Text variant="caption" color="textMuted">Using your default alerts.</Text>
-            ) : (
-              <HStack>
-                <Button
-                  label="Save as default alerts"
-                  variant="ghost"
-                  size="sm"
-                  onPress={() => void setDefaultCalendarAlerts(selectedAlerts)}
-                />
-              </HStack>
-            )}
-          </VStack>
-
-          {calendarError ? <Text color="danger">{calendarError}</Text> : null}
-
-          {isEdit ? (
-            link ? (
-              <HStack justify="space-between" align="center" gap={theme.space.md}>
-                <VStack gap={2} flex={1}>
-                  <Text color="success" variant="bodyStrong">Linked to calendar</Text>
-                  <Text variant="caption" color="textMuted">
-                    {`Synced ${formatIsoDate(date)} · ${formatIsoTime(startTime)}`}
-                  </Text>
-                </VStack>
-                <Button label="Remove" variant="danger" size="sm" onPress={onRemove} loading={isBusy} />
-              </HStack>
-            ) : (
-              <Button label="Add to calendar" variant="secondary" onPress={onAddExisting} loading={isBusy} />
-            )
-          ) : (
             <Switch
-              label="Add to calendar on save"
-              value={addToCalendarOnSave}
-              onValueChange={setAddToCalendarOnSave}
+              label="SAT Mode"
+              description="Titles events “{Name} SAT Tutor” instead of “{Name} Tutoring”."
+              value={satMode}
+              onValueChange={(v) => void setSatMode(v)}
             />
-          )}
-        </VStack>
+
+            <HStack justify="space-between" align="center" gap={theme.space.md}>
+              <Text variant="label" color="textMuted">
+                Event title
+              </Text>
+              <Text variant="label" style={{ flexShrink: 1, textAlign: 'right' }}>
+                {eventTitle}
+              </Text>
+            </HStack>
+
+            <Select
+              label="Provider"
+              value={providerId}
+              options={providerOptions}
+              onChange={(id) => setProvider(id)}
+            />
+
+            {/* Alerts / reminders */}
+            <VStack gap={theme.space.sm}>
+              <Text variant="label">Alerts</Text>
+              <HStack gap={theme.space.sm} wrap>
+                {ALERT_PRESETS.map((minutes) => (
+                  <Chip
+                    key={minutes}
+                    label={alertLabel(minutes)}
+                    selected={selectedAlerts.includes(minutes)}
+                    onPress={() => toggleAlert(minutes)}
+                  />
+                ))}
+              </HStack>
+              {alertsAreDefault ? (
+                <Text variant="caption" color="textMuted">Using your default alerts.</Text>
+              ) : (
+                <HStack>
+                  <Button
+                    label="Save as default alerts"
+                    variant="ghost"
+                    size="sm"
+                    onPress={() => void setDefaultCalendarAlerts(selectedAlerts)}
+                  />
+                </HStack>
+              )}
+            </VStack>
+
+            {calendarError ? <Text color="danger">{calendarError}</Text> : null}
+
+            {isEdit ? (
+              link ? (
+                <HStack justify="space-between" align="center" gap={theme.space.md}>
+                  <Icon as={CalendarCheck} color="success" />
+                  <VStack gap={2} flex={1}>
+                    <Text color="success" variant="bodyStrong">Linked to calendar</Text>
+                    <Text variant="caption" color="textMuted">
+                      {`Synced ${formatIsoDate(date)} · ${formatIsoTime(startTime)}`}
+                    </Text>
+                  </VStack>
+                  <Button label="Remove" variant="ghost" size="sm" onPress={onRemove} loading={isBusy} />
+                </HStack>
+              ) : (
+                <Button label="Add to calendar" variant="secondary" onPress={onAddExisting} loading={isBusy} />
+              )
+            ) : (
+              <Switch
+                label="Add to calendar on save"
+                value={addToCalendarOnSave}
+                onValueChange={setAddToCalendarOnSave}
+              />
+            )}
+        </Section>
 
         {/* Notes — kept below the calendar setup. */}
         <TextField label="Notes" value={notes} onChangeText={setNotes} multiline numberOfLines={3} />

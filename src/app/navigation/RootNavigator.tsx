@@ -97,7 +97,11 @@ const StudentsNavigator = () => {
         component={StudentDetailScreen}
         options={{ title: 'Student', headerTitle: '' }}
       />
-      <StudentsStack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ title: 'Session' }} />
+      <StudentsStack.Screen
+        name="SessionDetail"
+        component={SessionDetailScreen}
+        options={{ title: 'Session', headerTitle: '' }}
+      />
     </StudentsStack.Navigator>
   );
 };

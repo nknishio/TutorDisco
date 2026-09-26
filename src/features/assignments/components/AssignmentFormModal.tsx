@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useTheme } from '../../../shared/theme';
 import { useResponsive } from '../../../shared/responsive';
+import { Trash2 } from 'lucide-react-native';
 import { Badge, Button, HStack, Modal, Select, TextField, Text, VStack } from '../../../shared/ui';
 import type {
   Assignment,
@@ -18,6 +19,7 @@ import type {
 import { ASSIGNMENT_STATUSES } from '../../../domain/types';
 import { isIsoDate } from '../../../shared/utils/time';
 import { formatIsoDate } from '../../../shared/utils/datetime';
+import { labelFor } from '../../../shared/utils/labels';
 import { useFormSubmit } from '../../../shared/hooks';
 import { useAssignmentsStore, useSessionsStore, useStudentsStore } from '../../../store';
 
@@ -30,10 +32,7 @@ export interface AssignmentFormModalProps {
   assignment?: Assignment;
 }
 
-const statusOptions = ASSIGNMENT_STATUSES.map((s) => ({
-  label: s === 'in_progress' ? 'In progress' : s.charAt(0).toUpperCase() + s.slice(1),
-  value: s,
-}));
+const statusOptions = ASSIGNMENT_STATUSES.map((s) => ({ label: labelFor(s), value: s }));
 
 export const AssignmentFormModal = ({ visible, onClose, sessionId, studentId, assignment }: AssignmentFormModalProps) => {
   const theme = useTheme();
@@ -168,11 +167,21 @@ export const AssignmentFormModal = ({ visible, onClose, sessionId, studentId, as
   const viewingOther = browseStudentId !== studentId;
 
   const previousBlock = studentId ? (
-    <VStack gap={theme.space.sm} style={isCompact ? undefined : { width: 320 }}>
+    <VStack
+      gap={theme.space.md}
+      flex={isCompact ? undefined : 1}
+      style={
+        isCompact
+          ? undefined
+          : { paddingLeft: theme.space.xl, borderLeftWidth: 1, borderLeftColor: theme.colors.border }
+      }
+    >
       <HStack justify="space-between" align="center" gap={theme.space.sm} wrap>
-        <Text variant="bodyStrong">Previous assignments</Text>
+        <Text variant="eyebrow" color="textMuted">
+          Previous assignments
+        </Text>
         {studentOptions.length > 1 ? (
-          <View style={{ flexGrow: 1, minWidth: 150, maxWidth: 210 }}>
+          <View style={{ flexGrow: 1, flexBasis: 160, maxWidth: 240 }}>
             <Select
               value={browseStudentId ?? null}
               options={studentOptions}
@@ -183,7 +192,7 @@ export const AssignmentFormModal = ({ visible, onClose, sessionId, studentId, as
         ) : null}
       </HStack>
       {previousAssignments.length === 0 ? (
-        <Text color="textMuted" variant="caption">
+        <Text color="textMuted" variant="label">
           {viewingOther
             ? `No assignments for ${studentsById[browseStudentId ?? '']?.name ?? 'this student'}.`
             : 'No previous assignments for this student.'}
@@ -214,10 +223,7 @@ export const AssignmentFormModal = ({ visible, onClose, sessionId, studentId, as
                   >
                     <HStack justify="space-between" align="center" gap={theme.space.sm}>
                       <Text variant="bodyStrong" style={{ flex: 1 }} selectable>{a.title}</Text>
-                      <Badge
-                        label={a.status === 'in_progress' ? 'In progress' : a.status}
-                        tone={done ? 'success' : 'neutral'}
-                      />
+                      <Badge label={labelFor(a.status)} tone={done ? 'success' : 'neutral'} />
                     </HStack>
                     {a.details ? (
                       <Text variant="caption" color="textMuted" selectable>{a.details}</Text>
@@ -230,7 +236,7 @@ export const AssignmentFormModal = ({ visible, onClose, sessionId, studentId, as
                     <HStack>
                       <Button
                         label="Use in form"
-                        variant="secondary"
+                        variant="subtle"
                         size="sm"
                         onPress={() => usePrevious(a)}
                         accessibilityLabel={`Use "${a.title}" in the form`}
@@ -258,12 +264,12 @@ export const AssignmentFormModal = ({ visible, onClose, sessionId, studentId, as
             {isEdit ? (
               confirmDelete ? (
                 <HStack gap={theme.space.xs} align="center">
-                  <Text variant="caption" color="danger">Delete?</Text>
-                  <Button label="Confirm" size="sm" variant="danger" onPress={onDelete} loading={submitting} />
-                  <Button label="Cancel" size="sm" variant="ghost" onPress={() => setConfirmDelete(false)} disabled={submitting} />
+                  <Text variant="label" color="danger">Delete this assignment?</Text>
+                  <Button label="Keep" size="sm" variant="ghost" onPress={() => setConfirmDelete(false)} disabled={submitting} />
+                  <Button label="Delete" size="sm" variant="danger" onPress={onDelete} loading={submitting} />
                 </HStack>
               ) : (
-                <Button label="Delete" size="sm" variant="danger" onPress={() => setConfirmDelete(true)} disabled={submitting} />
+                <Button label="Delete" size="sm" variant="ghost" icon={Trash2} onPress={() => setConfirmDelete(true)} disabled={submitting} />
               )
             ) : null}
           </View>
