@@ -20,6 +20,7 @@ import {
 } from '../../../domain/services/templates';
 import { useFormSubmit } from '../../../shared/hooks';
 import { useTemplatesStore } from '../../../store';
+import { Plus } from 'lucide-react-native';
 
 export interface TemplateFormModalProps {
   visible: boolean;
@@ -115,23 +116,36 @@ export const TemplateFormModal = ({ visible, onClose, template }: TemplateFormMo
           placeholder="Write your email. Insert variables below."
         />
 
-        {/* Variable chips */}
+        {/* Variable chips: friendly names; the {{token}} is what gets inserted. */}
         <VStack gap={theme.space.sm}>
-          <Text variant="label" color="textMuted">Insert variable</Text>
+          <Text variant="label">Insert a detail</Text>
+          <Text variant="caption" color="textMuted">
+            Filled in from the session when you send the email.
+          </Text>
           <HStack gap={theme.space.sm} wrap>
             {TEMPLATE_VARIABLES.map((v) => (
-              <Button key={v.key} label={v.token} variant="secondary" size="sm" onPress={() => insertToken(v.token)} />
+              <Button
+                key={v.key}
+                label={v.label}
+                icon={Plus}
+                variant="secondary"
+                size="sm"
+                accessibilityLabel={`Insert ${v.label}`}
+                onPress={() => insertToken(v.token)}
+              />
             ))}
           </HStack>
         </VStack>
 
         {/* Live preview with sample data */}
         <VStack gap={theme.space.sm}>
-          <Text variant="label" color="textMuted">Preview (sample data)</Text>
+          <Text variant="label">Preview with sample details</Text>
           <View
             style={{
               backgroundColor: theme.colors.surfaceMuted,
               borderRadius: theme.radii.md,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
               padding: theme.space.lg,
               minHeight: 80,
             }}

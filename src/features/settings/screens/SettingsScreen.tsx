@@ -1,21 +1,44 @@
+/**
+ * SettingsScreen — account, appearance, email templates, device sync, and backup.
+ *
+ * Each group is a titled card. Email templates live one level down (a row here opens
+ * the Templates screen) because they're edited occasionally but used from sessions.
+ * Restore replaces ALL data, so it sits behind an explicit step with a warning and a
+ * danger-styled confirm.
+ */
 import React, { useEffect, useState } from 'react';
-import { Platform, ScrollView, TextInput } from 'react-native';
+import { Platform, View } from 'react-native';
+import { Download, LogOut, Mail, Upload } from 'lucide-react-native';
 import { useTheme } from '../../../shared/theme';
 import { useResponsive } from '../../../shared/responsive';
-import { Button, HStack, Text, VStack } from '../../../shared/ui';
+import {
+  Avatar,
+  Button,
+  Card,
+  HStack,
+  Icon,
+  InlineNotice,
+  ListRow,
+  Page,
+  PageHeader,
+  Section,
+  SegmentedControl,
+  Text,
+  TextField,
+  VStack,
+} from '../../../shared/ui';
 import { useBackupStore } from '../../../store/backupStore';
-import { useAuthStore, useSettingsStore } from '../../../store';
+import { useAuthStore, useSettingsStore, useTemplatesStore } from '../../../store';
 import { pickBackupFileOnWeb } from '../../../shared/utils/backupFile';
 import { SyncSection } from '../components/SyncSection';
 import type { ThemePreference } from '../../../domain/types';
-import { Select } from '../../../shared/ui';
 import type { SettingsScreenProps } from '../../../app/navigation/types';
 
 type Props = SettingsScreenProps<'Settings'>;
 
-export const SettingsScreen = (_: Props) => {
+export const SettingsScreen = ({ navigation }: Props) => {
   const theme = useTheme();
-  const { select } = useResponsive();
+  const { isCompact } = useResponsive();
 
   const [pastedJson, setPastedJson] = useState('');
   const [showRestore, setShowRestore] = useState(false);
@@ -35,17 +58,19 @@ export const SettingsScreen = (_: Props) => {
   const loadSettings = useSettingsStore((s) => s.load);
   const setTheme = useSettingsStore((s) => s.setTheme);
 
-  const maxWidth = select({ compact: 9999, expanded: 800 });
+  const templateCount = useTemplatesStore((s) => s.order.length);
+  const loadTemplates = useTemplatesStore((s) => s.load);
 
   const themeOptions: { label: string; value: ThemePreference }[] = [
-    { label: 'System default', value: 'system' },
+    { label: 'System', value: 'system' },
     { label: 'Light', value: 'light' },
     { label: 'Dark', value: 'dark' },
   ];
 
   useEffect(() => {
     void loadSettings();
-  }, [loadSettings]);
+    void loadTemplates();
+  }, [loadSettings, loadTemplates]);
 
   const handleExport = async () => {
     await exportData();
@@ -79,147 +104,164 @@ export const SettingsScreen = (_: Props) => {
     clearError();
   };
 
-  return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      contentContainerStyle={{ alignItems: 'center' }}
-      keyboardShouldPersistTaps="handled"
+  /** One labelled row inside the backup card: title + explanation, action on the right. */
+  const actionRow = (title: string, body: string, action: React.ReactNode, first = false) => (
+    <View
+      style={{
+        flexDirection: isCompact ? 'column' : 'row',
+        alignItems: isCompact ? 'flex-start' : 'center',
+        gap: theme.space.md,
+        paddingTop: first ? 0 : theme.space.lg,
+        paddingBottom: theme.space.lg,
+        borderTopWidth: first ? 0 : 1,
+        borderTopColor: theme.colors.border,
+      }}
     >
-      <VStack gap={theme.space.xl} style={{ width: '100%', maxWidth, padding: theme.space.lg }}>
-        {currentAccount && (
-          <VStack gap={theme.space.xs}>
-            <Text variant="title">Account</Text>
-            <Text color="textMuted">
-              Signed in as <Text variant="bodyStrong">{currentAccount.displayName}</Text>
-            </Text>
-            <Text color="textSubtle" variant="label">
-              @{currentAccount.username}
-            </Text>
-            {/* Phones have no sidebar, so Sign out lives here too. */}
-            <Button label="Sign out" variant="secondary" size="sm" onPress={() => void logout()} />
-          </VStack>
-        )}
+      <VStack gap={2} flex={isCompact ? undefined : 1}>
+        <Text variant="bodyStrong">{title}</Text>
+        <Text variant="label" color="textMuted">
+          {body}
+        </Text>
+      </VStack>
+      {action}
+    </View>
+  );
 
-        <VStack gap={theme.space.sm}>
-          <Text variant="title">Appearance</Text>
-          <Select
-            label="Theme"
-            value={themePref}
-            options={themeOptions}
-            onChange={(v) => void setTheme(v)}
+  return (
+    <Page safeTop narrow>
+      <PageHeader title="Settings" />
+
+      {currentAccount ? (
+        <Section title="Account">
+          <Card>
+            <HStack gap={theme.space.md} align="center" wrap>
+              <Avatar name={currentAccount.displayName || currentAccount.username} />
+              <VStack gap={2} flex={1}>
+                <Text variant="bodyStrong">{currentAccount.displayName}</Text>
+                <Text variant="label" color="textMuted">
+                  @{currentAccount.username}
+                </Text>
+              </VStack>
+              {/* Phones have no sidebar, so Sign out lives here too. */}
+              <Button label="Sign out" variant="secondary" icon={LogOut} onPress={() => void logout()} />
+            </HStack>
+          </Card>
+        </Section>
+      ) : null}
+
+      <Section title="Appearance">
+        <Card>
+          <HStack justify="space-between" align="center" gap={theme.space.md} wrap>
+            <VStack gap={2}>
+              <Text variant="bodyStrong">Theme</Text>
+              <Text variant="label" color="textMuted">
+                System follows your device's light or dark setting.
+              </Text>
+            </VStack>
+            <SegmentedControl
+              accessibilityLabel="Theme"
+              options={themeOptions}
+              value={themePref}
+              onChange={(v) => void setTheme(v)}
+            />
+          </HStack>
+        </Card>
+      </Section>
+
+      <Section title="Email">
+        <Card padded={false}>
+          <ListRow
+            leading={
+              <View
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: theme.radii.md,
+                  backgroundColor: theme.colors.surfaceMuted,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon as={Mail} />
+              </View>
+            }
+            title="Email templates"
+            subtitle={`${templateCount} template${templateCount === 1 ? '' : 's'} · used when emailing parents from a session`}
+            onPress={() => navigation.navigate('Templates')}
           />
-        </VStack>
+        </Card>
+      </Section>
 
-        <SyncSection />
+      <SyncSection />
 
-        <VStack gap={theme.space.lg}>
-          <Text variant="title">Data Backup</Text>
-
-          {/* Export */}
-          <VStack gap={theme.space.sm}>
-            <Text variant="bodyStrong">Export</Text>
-            <Text color="textMuted">
-              Save a copy of all your tutoring data as a JSON file. Store it somewhere safe — you can restore from it at any time.
-            </Text>
+      <Section title="Backup and restore">
+        <Card>
+          {actionRow(
+            'Export a backup',
+            'Save all your tutoring data as a JSON file. Keep it somewhere safe.',
             <Button
-              label={exporting ? 'Exporting…' : 'Export Backup'}
-              variant="primary"
+              label="Export backup"
+              variant="secondary"
+              icon={Download}
               loading={exporting}
               onPress={() => void handleExport()}
-            />
-          </VStack>
+            />,
+            true,
+          )}
 
-          {/* Restore */}
-          <VStack gap={theme.space.sm}>
-            <Text variant="bodyStrong">Restore</Text>
-            <Text color="textMuted">
-              Restore all data from a previous backup. Your current data will be replaced.
-            </Text>
+          {actionRow(
+            'Restore from a backup',
+            'Replaces everything on this device with the backup’s contents.',
+            showRestore ? null : <Button label="Restore…" variant="secondary" icon={Upload} onPress={openRestore} />,
+          )}
 
-            {!showRestore ? (
-              <VStack gap={theme.space.sm}>
+          {restoreSuccess && !showRestore ? (
+            <InlineNotice tone="success" message="Backup restored." onDismiss={() => setRestoreSuccess(false)} />
+          ) : null}
+
+          {showRestore ? (
+            <VStack gap={theme.space.md}>
+              <InlineNotice
+                tone="danger"
+                message="All current data will be permanently replaced with the backup. This can’t be undone."
+              />
+              {Platform.OS === 'web' ? (
                 <Button
-                  label="Restore from Backup"
+                  label="Choose backup file…"
                   variant="secondary"
-                  onPress={openRestore}
+                  icon={Upload}
+                  onPress={() => void handlePickFile()}
                 />
-                {restoreSuccess && (
-                  <Text color="success">Backup restored successfully.</Text>
-                )}
-              </VStack>
-            ) : (
-              <VStack gap={theme.space.md}>
-                <VStack
-                  gap={theme.space.xs}
-                  style={{
-                    backgroundColor: theme.colors.dangerMuted,
-                    borderRadius: theme.radii.md,
-                    padding: theme.space.md,
-                  }}
-                >
-                  <Text color="danger" variant="label" weight="600">
-                    Warning
-                  </Text>
-                  <Text color="danger" variant="label">
-                    All current data will be permanently replaced with the backup contents. This cannot be undone.
-                  </Text>
-                </VStack>
-
-                {Platform.OS === 'web' && (
-                  <Button
-                    label="Choose backup file…"
-                    variant="ghost"
-                    onPress={() => void handlePickFile()}
-                  />
-                )}
-
-                <Text color="textMuted" variant="caption">
-                  {Platform.OS === 'web'
-                    ? 'Or paste the backup JSON below:'
-                    : 'Open your backup file, copy all the text, and paste it here:'}
-                </Text>
-
-                <TextInput
-                  value={pastedJson}
-                  onChangeText={setPastedJson}
-                  multiline
-                  placeholder="Paste backup JSON here…"
-                  placeholderTextColor={theme.colors.textSubtle}
-                  textAlignVertical="top"
-                  style={{
-                    borderWidth: 1,
-                    borderColor: theme.colors.border,
-                    borderRadius: theme.radii.md,
-                    padding: theme.space.md,
-                    color: theme.colors.text,
-                    backgroundColor: theme.colors.surface,
-                    minHeight: 140,
-                    fontSize: 13,
-                    fontFamily: Platform.select({
-                      ios: 'Menlo',
-                      android: 'monospace',
-                      default: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-                    }),
-                  }}
+              ) : null}
+              <TextField
+                label={Platform.OS === 'web' ? 'Or paste the backup JSON' : 'Paste the backup JSON'}
+                helperText={
+                  Platform.OS === 'web' ? undefined : 'Open your backup file, copy all of its text, and paste it here.'
+                }
+                value={pastedJson}
+                onChangeText={setPastedJson}
+                multiline
+                numberOfLines={6}
+                monospace
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="{ … }"
+              />
+              {error !== null ? <InlineNotice tone="danger" message={error} /> : null}
+              <HStack gap={theme.space.sm} justify="flex-end">
+                <Button label="Cancel" variant="ghost" onPress={closeRestore} />
+                <Button
+                  label="Replace my data"
+                  variant="danger"
+                  loading={restoring}
+                  disabled={!pastedJson.trim()}
+                  onPress={() => void handleRestore()}
                 />
-
-                {error !== null && <Text color="danger">{error}</Text>}
-
-                <HStack gap={theme.space.sm}>
-                  <Button
-                    label={restoring ? 'Restoring…' : 'Restore'}
-                    variant="primary"
-                    loading={restoring}
-                    disabled={!pastedJson.trim()}
-                    onPress={() => void handleRestore()}
-                  />
-                  <Button label="Cancel" variant="ghost" onPress={closeRestore} />
-                </HStack>
-              </VStack>
-            )}
-          </VStack>
-        </VStack>
-      </VStack>
-    </ScrollView>
+              </HStack>
+            </VStack>
+          ) : null}
+        </Card>
+      </Section>
+    </Page>
   );
 };

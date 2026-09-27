@@ -5,6 +5,7 @@
  * tap copies it to the clipboard.
  */
 import React, { useEffect, useMemo, useState } from 'react';
+import { Check, Copy } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../../../shared/theme';
 import { Button, HStack, Modal, Select, TextField, Text, VStack } from '../../../shared/ui';
@@ -118,13 +119,19 @@ export const GenerateEmailModal = ({ visible, onClose, session, studentId }: Gen
       footer={
         <HStack gap={theme.space.md} justify="flex-end">
           <Button label="Close" variant="ghost" onPress={onClose} />
-          <Button label={copied ? 'Copied ✓' : 'Copy'} variant="primary" onPress={onCopy} disabled={draft.trim().length === 0} />
+          <Button
+            label={copied ? 'Copied' : 'Copy email'}
+            icon={copied ? Check : Copy}
+            variant="primary"
+            onPress={onCopy}
+            disabled={draft.trim().length === 0}
+          />
         </HStack>
       }
     >
       <VStack gap={theme.space.lg}>
         {templates.length === 0 ? (
-          <Text color="textMuted">No templates yet. Create one on the Templates screen first.</Text>
+          <Text color="textMuted">No templates yet. Create one in Settings → Email templates.</Text>
         ) : (
           <>
             <Select

@@ -115,8 +115,16 @@ const SettingsNavigator = () => {
   };
   return (
     <SettingsStack.Navigator initialRouteName="Settings" screenOptions={options}>
-      <SettingsStack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
-      <SettingsStack.Screen name="Templates" component={TemplatesScreen} options={{ title: 'Email templates' }} />
+      <SettingsStack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{ title: 'Settings', headerShown: false }}
+      />
+      <SettingsStack.Screen
+        name="Templates"
+        component={TemplatesScreen}
+        options={{ title: 'Email templates', headerTitle: '' }}
+      />
     </SettingsStack.Navigator>
   );
 };

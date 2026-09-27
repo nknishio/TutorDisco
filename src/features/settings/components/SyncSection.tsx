@@ -14,7 +14,8 @@ import * as Clipboard from 'expo-clipboard';
 import * as Crypto from 'expo-crypto';
 import { Platform } from 'react-native';
 import { useTheme } from '../../../shared/theme';
-import { Badge, Button, HStack, Switch, Text, TextField, VStack } from '../../../shared/ui';
+import { Copy, KeyRound, RefreshCw } from 'lucide-react-native';
+import { Badge, Button, Card, HStack, InlineNotice, Section, Switch, Text, TextField, VStack } from '../../../shared/ui';
 import { useFormSubmit } from '../../../shared/hooks';
 import { useSyncStore } from '../../../store';
 import type { BadgeTone } from '../../../shared/ui';
@@ -189,135 +190,139 @@ export const SyncSection = () => {
   };
 
   return (
-    <VStack gap={theme.space.lg}>
-      <HStack gap={theme.space.sm} align="center">
-        <Text variant="title">Device Sync</Text>
-        <Badge label={PHASE_LABEL[phase]} tone={PHASE_TONE[phase]} />
-      </HStack>
+    <Section
+      title="Device sync"
+      description="Keep your devices in step through your own deployment. The most recent edit to a record wins."
+      action={<Badge label={PHASE_LABEL[phase]} tone={PHASE_TONE[phase]} />}
+    >
+      <Card>
+        <VStack gap={theme.space.lg}>
 
-      <Text color="textMuted">
-        Keep this device and your others in step through your own deployment. Each change is
-        merged row by row, so you can edit on either device — the most recent edit to a record
-        wins.
-      </Text>
-
-      {config !== null && (
-        <VStack gap={theme.space.sm}>
-          <Text color="textMuted" variant="label">
-            Syncing space <Text variant="bodyStrong">{config.space}</Text>
-            {lastSyncedAt !== null ? ` · last synced ${relativeTime(lastSyncedAt, Date.now())}` : ''}
-          </Text>
-
-          {lastStats !== null && (
-            <Text color="textSubtle" variant="caption">
-              {lastStats.fromRemote === 0 && lastStats.toRemote === 0
-                ? 'Everything already matched.'
-                : `Received ${lastStats.fromRemote} change${lastStats.fromRemote === 1 ? '' : 's'}, sent ${lastStats.toRemote}.`}
-            </Text>
-          )}
-
-          <Switch
-            value={enabled}
-            onValueChange={(v) => void setEnabled(v)}
-            label="Sync automatically"
-            description="Push a few seconds after each change, and check for other devices' changes periodically."
-          />
-
-          <HStack gap={theme.space.sm}>
-            <Button
-              label={phase === 'syncing' ? 'Syncing…' : 'Sync now'}
-              variant="primary"
-              loading={phase === 'syncing'}
-              onPress={() => void handleSyncNow()}
-            />
-            <Button
-              label="Copy setup code"
-              variant="secondary"
-              onPress={() => void handleCopySetupCode()}
-            />
-          </HStack>
-        </VStack>
-      )}
-
-      {storeError !== null && <Text color="danger">{storeError}</Text>}
-      {notice !== null && <Text color="success">{notice}</Text>}
-
-      {!showForm ? (
-        <HStack gap={theme.space.sm}>
-          <Button
-            label={config === null ? 'Set up sync…' : 'Edit sync settings…'}
-            variant={config === null ? 'primary' : 'ghost'}
-            onPress={() => setShowForm(true)}
-          />
           {config !== null && (
-            <Button label="Disconnect" variant="ghost" onPress={() => void handleDisconnect()} />
+            <VStack gap={theme.space.sm}>
+              <Text color="textMuted" variant="label">
+                Syncing space <Text variant="bodyStrong">{config.space}</Text>
+                {lastSyncedAt !== null ? ` · last synced ${relativeTime(lastSyncedAt, Date.now())}` : ''}
+              </Text>
+
+              {lastStats !== null && (
+                <Text color="textSubtle" variant="caption">
+                  {lastStats.fromRemote === 0 && lastStats.toRemote === 0
+                    ? 'Everything already matched.'
+                    : `Received ${lastStats.fromRemote} change${lastStats.fromRemote === 1 ? '' : 's'}, sent ${lastStats.toRemote}.`}
+                </Text>
+              )}
+
+              <Switch
+                value={enabled}
+                onValueChange={(v) => void setEnabled(v)}
+                label="Sync automatically"
+                description="Push a few seconds after each change, and check for other devices' changes periodically."
+              />
+
+              <HStack gap={theme.space.sm} wrap>
+                <Button
+                  label="Sync now"
+                  variant="secondary"
+                  icon={RefreshCw}
+                  loading={phase === 'syncing'}
+                  onPress={() => void handleSyncNow()}
+                />
+                <Button
+                  label="Copy setup code"
+                  variant="ghost"
+                  icon={Copy}
+                  onPress={() => void handleCopySetupCode()}
+                />
+              </HStack>
+            </VStack>
           )}
-        </HStack>
-      ) : (
-        <VStack gap={theme.space.md}>
-          <Button
-            label="Paste setup code from clipboard"
-            variant="secondary"
-            onPress={() => void handlePasteSetupCode()}
-          />
-          <Text color="textSubtle" variant="caption">
-            Already set up another device? Copy its setup code and paste it here instead of
-            filling these in by hand.
-          </Text>
 
-          <TextField
-            label="Sync URL"
-            value={url}
-            onChangeText={setUrl}
-            placeholder="https://your-app.workers.dev/sync"
-            autoCapitalize="none"
-            autoCorrect={false}
-            helperText="Your deployment's address with /sync on the end."
-          />
-          <TextField
-            label="Space"
-            value={space}
-            onChangeText={setSpace}
-            placeholder="default"
-            autoCapitalize="none"
-            autoCorrect={false}
-            helperText="Devices sharing a space share their data. Letters, digits, - and _ only."
-          />
-          <TextField
-            label="Sync key"
-            value={secret}
-            onChangeText={setSecret}
-            placeholder="Matches SYNC_SECRET on your deployment"
-            autoCapitalize="none"
-            autoCorrect={false}
-            helperText="Stored only on this device. Anyone with this key can read and overwrite your synced data."
-          />
-          <Button
-            label="Generate a key"
-            variant="ghost"
-            onPress={() => void handleGenerateKey()}
-          />
+          {storeError !== null ? <InlineNotice tone="danger" message={storeError} /> : null}
+          {notice !== null ? <InlineNotice tone="success" message={notice} /> : null}
 
-          {formError !== null && <Text color="danger">{formError}</Text>}
+          {!showForm ? (
+            <HStack gap={theme.space.sm} wrap>
+              <Button
+                label={config === null ? 'Set up sync…' : 'Edit sync settings…'}
+                variant={config === null ? 'primary' : 'ghost'}
+                onPress={() => setShowForm(true)}
+              />
+              {config !== null && (
+                <Button label="Disconnect" variant="ghost" onPress={() => void handleDisconnect()} />
+              )}
+            </HStack>
+          ) : (
+            <VStack gap={theme.space.md}>
+              <Button
+                label="Paste setup code from clipboard"
+                variant="secondary"
+                onPress={() => void handlePasteSetupCode()}
+              />
+              <Text color="textSubtle" variant="caption">
+                Already set up another device? Copy its setup code and paste it here instead of
+                filling these in by hand.
+              </Text>
 
-          <HStack gap={theme.space.sm}>
-            <Button
-              label={submitting ? 'Saving…' : 'Save'}
-              variant="primary"
-              loading={submitting}
-              disabled={!url.trim() || !space.trim() || !secret.trim()}
-              onPress={() => void handleSave()}
-            />
-            <Button
-              label="Test connection"
-              variant="secondary"
-              disabled={config === null}
-              onPress={() => void handleTest()}
-            />
-            <Button label="Cancel" variant="ghost" onPress={() => setShowForm(false)} />
-          </HStack>
+              <TextField
+                label="Sync URL"
+                value={url}
+                onChangeText={setUrl}
+                placeholder="https://your-app.workers.dev/sync"
+                autoCapitalize="none"
+                autoCorrect={false}
+                helperText="Your deployment's address with /sync on the end."
+              />
+              <TextField
+                label="Space"
+                value={space}
+                onChangeText={setSpace}
+                placeholder="default"
+                autoCapitalize="none"
+                autoCorrect={false}
+                helperText="Devices sharing a space share their data. Letters, digits, - and _ only."
+              />
+              <TextField
+                label="Sync key"
+                value={secret}
+                onChangeText={setSecret}
+                placeholder="Matches SYNC_SECRET on your deployment"
+                autoCapitalize="none"
+                autoCorrect={false}
+                helperText="Stored only on this device. Anyone with this key can read and overwrite your synced data."
+              />
+              <HStack>
+                <Button
+                  label="Generate a key"
+                  variant="ghost"
+                  size="sm"
+                  icon={KeyRound}
+                  onPress={() => void handleGenerateKey()}
+                />
+              </HStack>
+
+              {formError !== null ? <InlineNotice tone="danger" message={formError} /> : null}
+
+              <HStack gap={theme.space.sm} wrap>
+                <Button
+                  label="Save"
+                  variant="primary"
+                  loading={submitting}
+                  disabled={!url.trim() || !space.trim() || !secret.trim()}
+                  onPress={() => void handleSave()}
+                />
+                <Button
+                  label="Test connection"
+                  variant="secondary"
+                  disabled={config === null}
+                  onPress={() => void handleTest()}
+                />
+                <Button label="Cancel" variant="ghost" onPress={() => setShowForm(false)} />
+              </HStack>
+            </VStack>
+          )}
         </VStack>
-      )}
-    </VStack>
+      </Card>
+    </Section>
   );
 };

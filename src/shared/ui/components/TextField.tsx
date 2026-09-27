@@ -43,6 +43,8 @@ export interface TextFieldProps
   multiline?: boolean;
   /** Decorative icon inside the field's leading edge (e.g. Search). */
   leadingIcon?: LucideIcon;
+  /** Set the input in the monospace face (codes, pasted JSON). */
+  monospace?: boolean;
   numberOfLines?: number;
 }
 
@@ -55,6 +57,7 @@ export const TextField = ({
   numberOfLines = 4,
   editable = true,
   leadingIcon,
+  monospace = false,
   onFocus,
   onBlur,
   ...inputProps
@@ -102,8 +105,8 @@ export const TextField = ({
           style={{
             flex: leadingIcon ? 1 : undefined,
             color: theme.colors.text,
-            fontSize: theme.typography.fontSize.md,
-            fontFamily: theme.typography.fontFamily.sans,
+            fontSize: monospace ? theme.typography.fontSize.sm : theme.typography.fontSize.md,
+            fontFamily: monospace ? theme.typography.fontFamily.mono : theme.typography.fontFamily.sans,
             paddingVertical: multiline ? 0 : theme.space.sm,
             textAlignVertical: multiline ? 'top' : 'center',
             // Remove web focus outline (no-op on native).
