@@ -3,9 +3,9 @@
  * data layer for that account and the app swaps to the main navigator.
  */
 import React, { useState } from 'react';
-import { ScrollView, View } from 'react-native';
 import { useTheme } from '../../../shared/theme';
-import { Button, Card, TextField, Text, VStack } from '../../../shared/ui';
+import { Button, HStack, InlineNotice, TextField, Text, VStack } from '../../../shared/ui';
+import { AuthLayout } from '../components/AuthLayout';
 import { useFormSubmit } from '../../../shared/hooks';
 import { useAuthStore } from '../../../store';
 
@@ -34,39 +34,36 @@ export const LoginScreen = ({ onSwitchToRegister }: LoginScreenProps) => {
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: theme.space.xl }}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={{ width: '100%', maxWidth: 400 }}>
-        <Card titleStyle="heading" title="Sign in" subtitle="TutorDisco (disco — Latin for “I learn”)">
-          <VStack gap={theme.space.lg}>
-            {error ? <Text color="danger">{error}</Text> : null}
-            <TextField
-              label="Username"
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-              autoCorrect={false}
-              placeholder="e.g. ava"
-            />
-            <TextField
-              label="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
-            <Button label="Sign in" variant="primary" fullWidth onPress={onSubmit} loading={submitting} />
-            <Button label="Create a profile" variant="ghost" fullWidth onPress={onSwitchToRegister} disabled={submitting} />
-          </VStack>
-        </Card>
-        <Text variant="caption" color="textSubtle" style={{ textAlign: 'center', marginTop: theme.space.md }}>
-          Note: your information is all stored locally, and you are simply creating different profiles. Only
-          open one tab at a time on your device.
-        </Text>
-      </View>
-    </ScrollView>
+    <AuthLayout title="Sign in" subtitle="Welcome back.">
+      <VStack gap={theme.space.lg}>
+        {error ? <InlineNotice tone="danger" message={error} /> : null}
+        <TextField
+          label="Username"
+          value={username}
+          onChangeText={setUsername}
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="username"
+          textContentType="username"
+          returnKeyType="next"
+        />
+        <TextField
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          revealable
+          autoCapitalize="none"
+          autoComplete="current-password"
+          textContentType="password"
+          returnKeyType="go"
+          onSubmitEditing={onSubmit}
+        />
+        <Button label="Sign in" variant="primary" size="lg" fullWidth onPress={onSubmit} loading={submitting} />
+      </VStack>
+      <HStack gap={theme.space.xs} align="center" wrap>
+        <Text color="textMuted">New to TutorDisco?</Text>
+        <Button label="Create an account" variant="link" size="sm" onPress={onSwitchToRegister} disabled={submitting} />
+      </HStack>
+    </AuthLayout>
   );
 };

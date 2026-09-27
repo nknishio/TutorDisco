@@ -9,11 +9,12 @@
  * (`setValue` updates the border color without a React render). Error styling stays
  * static and wins over focus.
  */
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Animated, TextInput, type TextInputProps, type ViewStyle } from 'react-native';
-import type { LucideIcon } from 'lucide-react-native';
+import { Eye, EyeOff, type LucideIcon } from 'lucide-react-native';
 import { useTheme } from '../../theme';
 import { Icon } from '../primitives';
+import { IconButton } from './IconButton';
 import { FormField, type FormFieldProps } from './FormField';
 
 export interface TextFieldProps
@@ -45,6 +46,8 @@ export interface TextFieldProps
   leadingIcon?: LucideIcon;
   /** Set the input in the monospace face (codes, pasted JSON). */
   monospace?: boolean;
+  /** For passwords: show a show/hide toggle at the trailing edge (implies secure entry). */
+  revealable?: boolean;
   numberOfLines?: number;
 }
 
@@ -58,12 +61,17 @@ export const TextField = ({
   editable = true,
   leadingIcon,
   monospace = false,
+  revealable = false,
+  secureTextEntry,
   onFocus,
   onBlur,
   ...inputProps
 }: TextFieldProps) => {
   const theme = useTheme();
   const focus = useRef(new Animated.Value(0)).current;
+  // Only toggled by an explicit tap, never on focus, so it can't race native focus.
+  const [revealed, setRevealed] = useState(false);
+  const hasTrailing = revealable;
   const borderColor = error
     ? theme.colors.danger
     : focus.interpolate({ inputRange: [0, 1], outputRange: [theme.colors.borderStrong, theme.colors.focusRing] });
@@ -85,9 +93,10 @@ export const TextField = ({
     paddingVertical: multiline ? theme.space.md : 0,
     minHeight: multiline ? numberOfLines * 22 : 44,
     justifyContent: 'center',
-    flexDirection: leadingIcon ? 'row' : 'column',
-    alignItems: leadingIcon ? 'center' : 'stretch',
-    gap: leadingIcon ? theme.space.sm : 0,
+    flexDirection: leadingIcon || hasTrailing ? 'row' : 'column',
+    alignItems: leadingIcon || hasTrailing ? 'center' : 'stretch',
+    gap: leadingIcon || hasTrailing ? theme.space.sm : 0,
+    paddingRight: hasTrailing ? theme.space.xs : theme.space.md,
   };
 
   return (
@@ -98,12 +107,13 @@ export const TextField = ({
           {...inputProps}
           onFocus={handleFocus}
           onBlur={handleBlur}
+          secureTextEntry={revealable ? !revealed : secureTextEntry}
           editable={editable}
           multiline={multiline}
           numberOfLines={multiline ? numberOfLines : 1}
           placeholderTextColor={theme.colors.textSubtle}
           style={{
-            flex: leadingIcon ? 1 : undefined,
+            flex: leadingIcon || hasTrailing ? 1 : undefined,
             color: theme.colors.text,
             fontSize: monospace ? theme.typography.fontSize.sm : theme.typography.fontSize.md,
             fontFamily: monospace ? theme.typography.fontFamily.mono : theme.typography.fontFamily.sans,
@@ -113,6 +123,14 @@ export const TextField = ({
             ...(({ outlineStyle: 'none' } as unknown) as object),
           }}
         />
+        {revealable ? (
+          <IconButton
+            icon={revealed ? EyeOff : Eye}
+            size="sm"
+            accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
+            onPress={() => setRevealed((v) => !v)}
+          />
+        ) : null}
       </Animated.View>
     </FormField>
   );

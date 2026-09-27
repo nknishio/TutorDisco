@@ -4,9 +4,9 @@
  * the new account and the app swaps to the main navigator.
  */
 import React, { useState } from 'react';
-import { ScrollView, View } from 'react-native';
 import { useTheme } from '../../../shared/theme';
-import { Button, Card, TextField, Text, VStack } from '../../../shared/ui';
+import { Button, HStack, InlineNotice, TextField, Text, VStack } from '../../../shared/ui';
+import { AuthLayout } from '../components/AuthLayout';
 import { useFormSubmit } from '../../../shared/hooks';
 import { useAuthStore } from '../../../store';
 
@@ -38,32 +38,57 @@ export const RegisterScreen = ({ onSwitchToLogin }: RegisterScreenProps) => {
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: theme.space.xl }}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={{ width: '100%', maxWidth: 400 }}>
-        <Card titleStyle="heading" title="Create account" subtitle="TutorDisco">
-          <VStack gap={theme.space.lg}>
-            {error ? <Text color="danger">{error}</Text> : null}
-            <TextField label="Display name" value={displayName} onChangeText={setDisplayName} placeholder="e.g. Ava Chen" />
-            <TextField
-              label="Username"
-              required
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-              autoCorrect={false}
-              placeholder="e.g. ava"
-            />
-            <TextField label="Password" required value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" />
-            <TextField label="Confirm password" required value={confirm} onChangeText={setConfirm} secureTextEntry autoCapitalize="none" />
-            <Button label="Create account" variant="primary" fullWidth onPress={onSubmit} loading={submitting} />
-            <Button label="Back to sign in" variant="ghost" fullWidth onPress={onSwitchToLogin} disabled={submitting} />
-          </VStack>
-        </Card>
-      </View>
-    </ScrollView>
+    <AuthLayout title="Create an account" subtitle="Each account keeps its own students, sessions and payments.">
+      <VStack gap={theme.space.lg}>
+        {error ? <InlineNotice tone="danger" message={error} /> : null}
+        <TextField
+          label="Your name"
+          value={displayName}
+          onChangeText={setDisplayName}
+          placeholder="e.g. Ava Chen"
+          autoComplete="name"
+          textContentType="name"
+          helperText="Shown in the app. Leave blank to use your username."
+        />
+        <TextField
+          label="Username"
+          required
+          value={username}
+          onChangeText={setUsername}
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="username"
+          textContentType="username"
+          helperText="You'll use this to sign in."
+        />
+        <TextField
+          label="Password"
+          required
+          value={password}
+          onChangeText={setPassword}
+          revealable
+          autoCapitalize="none"
+          autoComplete="new-password"
+          textContentType="newPassword"
+        />
+        <TextField
+          label="Confirm password"
+          required
+          value={confirm}
+          onChangeText={setConfirm}
+          revealable
+          autoCapitalize="none"
+          autoComplete="new-password"
+          textContentType="newPassword"
+          returnKeyType="go"
+          onSubmitEditing={onSubmit}
+        />
+        <Button label="Create account" variant="primary" size="lg" fullWidth onPress={onSubmit} loading={submitting} />
+      </VStack>
+      <HStack gap={theme.space.xs} align="center" wrap>
+        <Text color="textMuted">Already have an account?</Text>
+        <Button label="Sign in" variant="link" size="sm" onPress={onSwitchToLogin} disabled={submitting} />
+      </HStack>
+    </AuthLayout>
   );
 };

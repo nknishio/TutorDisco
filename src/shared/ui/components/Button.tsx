@@ -3,7 +3,7 @@
  * Hover (web) and pressed (all) states are derived from Pressable interaction state.
  *
  * Variants: primary (one per screen), secondary (outlined), subtle (tinted indigo),
- * ghost (bare, for toolbars), danger. Pass a lucide icon via `icon` / `trailingIcon`;
+ * ghost (bare, for toolbars), link (indigo text, for inline navigation), danger. Pass a lucide icon via `icon` / `trailingIcon`;
  * it is sized and colored to match the label.
  *
  * Web: presses call `stopPropagation`, so a button inside a pressable row (DataTable,
@@ -16,7 +16,7 @@ import { useTheme } from '../../theme';
 import type { Theme, ThemeColors } from '../../theme/theme';
 import { Icon, Text } from '../primitives';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'subtle' | 'ghost' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'subtle' | 'ghost' | 'link' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps {
@@ -65,6 +65,8 @@ const fills = (t: Theme, v: ButtonVariant): Fill => {
       return { bg: c.primaryMuted, bgHover: c.primaryMuted, bgActive: c.primaryMuted, fg: 'primaryText', border: 'transparent' };
     case 'ghost':
       return { bg: 'transparent', bgHover: c.surfaceHover, bgActive: c.surfaceActive, fg: 'text', border: 'transparent' };
+    case 'link':
+      return { bg: 'transparent', bgHover: c.primaryMuted, bgActive: c.primaryMuted, fg: 'primaryText', border: 'transparent' };
   }
 };
 
