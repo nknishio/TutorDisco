@@ -99,7 +99,13 @@ export const GenerateEmailModal = ({ visible, onClose, session, studentId, initi
     const payments = paymentsOrder.map((id) => paymentsById[id]).filter((p): p is Payment => p?.studentId === studentId);
     const account = studentAccount(sessions, payments);
     const left = student
-      ? sessionsCoveredByCredit(account.creditCents, student.defaultHourlyRate, student.defaultDuration)
+      ? sessionsCoveredByCredit(
+          account.creditCents,
+          // Sessions already paid in advance use no credit.
+          sessions.filter((s) => !payments.some((p) => p.sessionId === s.id && p.status === 'paid')),
+          student.defaultHourlyRate,
+          student.defaultDuration,
+        )
       : null;
     return { balance: formatCents(account.creditCents), sessionsLeft: String(left ?? 0) };
   }, [sessionIdsByStudent, sessionsById, paymentsOrder, paymentsById, studentId, student]);

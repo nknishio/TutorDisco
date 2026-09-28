@@ -181,14 +181,31 @@ export const studentAccount = (sessions: readonly Session[], payments: readonly 
 };
 
 /**
- * How many more sessions prepaid credit covers at a given default rate and length —
- * the "when do I ask for more?" number. Null when the default fee is zero.
+ * How many more sessions prepaid credit covers — the "when do I ask for more?" number.
+ * Walks the student's actual SCHEDULED sessions in date order (each at its own rate and
+ * length), then, once those are used up, assumes further sessions at the default rate.
+ * Free ($0) sessions use no credit and aren't counted. Null when there's no way to tell
+ * (nothing scheduled and a $0 default fee).
  */
 export const sessionsCoveredByCredit = (
   creditCents: Cents,
-  hourlyRateCents: Cents,
-  durationMinutes: number,
+  sessions: readonly Session[],
+  defaultHourlyRateCents: Cents,
+  defaultDurationMinutes: number,
 ): number | null => {
-  const fee = expectedPaymentCents(hourlyRateCents, durationMinutes);
-  return fee > 0 ? Math.floor(creditCents / fee) : null;
+  let credit = creditCents as number;
+  let covered = 0;
+  const upcoming = sessions
+    .filter((s) => s.status === 'scheduled')
+    .sort(chronological)
+    .map(sessionPaymentCents)
+    .filter((fee) => fee > 0);
+  for (const fee of upcoming) {
+    if (credit < fee) return covered;
+    credit -= fee;
+    covered += 1;
+  }
+  const fee = expectedPaymentCents(defaultHourlyRateCents, defaultDurationMinutes);
+  if (fee <= 0) return upcoming.length ? covered : null;
+  return covered + Math.floor(credit / fee);
 };

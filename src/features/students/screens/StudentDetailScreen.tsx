@@ -323,6 +323,7 @@ const SessionHistoryEntry = ({
             )}
           />
           {coverage === 'paid' && session.status === 'completed' ? <Badge label="Paid" tone="success" /> : null}
+          {paid && session.status === 'scheduled' ? <Badge label="Paid in advance" tone="success" /> : null}
           {paid && (session.status === 'cancelled' || session.status === 'no_show') ? (
             <Badge label="Paid · moved to credit" tone="info" />
           ) : null}
@@ -545,7 +546,12 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
 
   // One balance tile: what's owed, or — when the family paid ahead — what credit is left
   // and how many sessions it still covers (the "when do I ask for more?" number).
-  const sessionsLeft = sessionsCoveredByCredit(account.creditCents, student.defaultHourlyRate, student.defaultDuration);
+  const sessionsLeft = sessionsCoveredByCredit(
+    account.creditCents,
+    sessions.filter((s) => !paidBySession[s.id]), // already paid in advance: uses no credit
+    student.defaultHourlyRate,
+    student.defaultDuration,
+  );
   const balanceCard =
     account.owedCents === 0 && account.creditCents > 0 ? (
       <StatCard
@@ -576,6 +582,10 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
   const lowCreditMessage = (() => {
     if (account.prepaidCents === 0 || sessionsLeft == null) return null;
     if (account.creditCents === 0) {
+      // Only worth saying if it matters now: money is owed or unpaid sessions are booked.
+      // A family that prepaid once and now pays per session shouldn't see it forever.
+      const unpaidBooked = sessions.filter((s) => s.status === 'scheduled' && !paidBySession[s.id]).length;
+      if (account.owedCents === 0 && unpaidBooked === 0) return null;
       return account.owedCents > 0
         ? `Prepaid credit is used up. ${formatCents(account.owedCents)} is owed.`
         : 'Prepaid credit is used up.';
