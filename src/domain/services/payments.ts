@@ -9,7 +9,7 @@
 import type { Cents, CreateInput, IsoDate, StudentId } from '../types/common';
 import type { Payment, PaymentStatus } from '../types/payment';
 import type { Session } from '../types/session';
-import { sessionPaymentCents } from './earnings';
+import { sessionPaymentCents, studentAccount } from './earnings';
 
 /**
  * Build the create-payload for a pending payment covering a session. The amount is
@@ -144,6 +144,73 @@ export const paymentTotals = (payments: readonly Payment[]): PaymentTotals => {
     pendingCount: t.pendingCount,
     overdueCount: t.overdueCount,
     outstandingCents: (t.pendingCents + t.overdueCents) as Cents,
+  };
+};
+
+// ---------------------------------------------------------------------------
+// Prepaid credit netting
+// ---------------------------------------------------------------------------
+
+/**
+ * How much of each pending/overdue payment is already covered by its student's prepaid
+ * credit (see `studentAccount`). A payment billed for a session that credit settles is
+ * not money owed, so the Payments screen labels it "Covered by prepayment" and leaves it
+ * out of Outstanding. Keyed by payment id; payments with no coverage are absent.
+ */
+export const creditCoverageByPayment = (
+  payments: readonly Payment[],
+  sessions: readonly Session[],
+): ReadonlyMap<string, Cents> => {
+  const sessionsByStudent = new Map<string, Session[]>();
+  for (const s of sessions) sessionsByStudent.set(s.studentId, [...(sessionsByStudent.get(s.studentId) ?? []), s]);
+  const paymentsByStudent = new Map<string, Payment[]>();
+  for (const p of payments) paymentsByStudent.set(p.studentId, [...(paymentsByStudent.get(p.studentId) ?? []), p]);
+
+  const covered = new Map<string, Cents>();
+  for (const [studentId, studentPayments] of paymentsByStudent) {
+    const account = studentAccount(sessionsByStudent.get(studentId) ?? [], studentPayments);
+    for (const p of studentPayments) {
+      if ((p.status !== 'pending' && p.status !== 'overdue') || p.sessionId == null) continue;
+      const settlement = account.settlements.get(p.sessionId);
+      if (settlement && settlement.creditAppliedCents > 0) {
+        covered.set(p.id, Math.min(p.amount, settlement.creditAppliedCents) as Cents);
+      }
+    }
+  }
+  return covered;
+};
+
+/**
+ * `paymentTotals` with prepaid credit netted out: covered amounts leave pending/overdue
+ * (and a fully covered payment leaves the counts). Collected is unchanged.
+ */
+export const netPaymentTotals = (
+  payments: readonly Payment[],
+  coverage: ReadonlyMap<string, Cents>,
+): PaymentTotals => {
+  const gross = paymentTotals(payments);
+  let pending = gross.pendingCents as number;
+  let overdue = gross.overdueCents as number;
+  let pendingCount = gross.pendingCount;
+  let overdueCount = gross.overdueCount;
+  for (const p of payments) {
+    const c = coverage.get(p.id);
+    if (!c) continue;
+    if (p.status === 'pending') {
+      pending -= c;
+      if (c >= p.amount) pendingCount -= 1;
+    } else if (p.status === 'overdue') {
+      overdue -= c;
+      if (c >= p.amount) overdueCount -= 1;
+    }
+  }
+  return {
+    ...gross,
+    pendingCents: pending as Cents,
+    overdueCents: overdue as Cents,
+    pendingCount,
+    overdueCount,
+    outstandingCents: (pending + overdue) as Cents,
   };
 };
 

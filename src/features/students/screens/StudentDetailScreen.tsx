@@ -53,7 +53,7 @@ import {
 } from '../../../shared/ui';
 import type { Assignment, Payment, Session, SessionStatus, StudentStatus } from '../../../domain/types';
 import { SESSION_STATUSES } from '../../../domain/types';
-import { revenueSummary, sessionPaymentCents, studentBalance } from '../../../domain/services/earnings';
+import { revenueSummary, sessionPaymentCents, studentAccount } from '../../../domain/services/earnings';
 import { formatCents } from '../../../shared/utils/money';
 import { formatIsoDate, formatIsoTime, formatDuration, todayIsoDate } from '../../../shared/utils/datetime';
 import { labelFor } from '../../../shared/utils/labels';
@@ -423,7 +423,7 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
   // The payments cache can also hold other students' rows (Payments tab), so scope it.
   const balance = useMemo(
     () =>
-      studentBalance(
+      studentAccount(
         sessions,
         paymentsOrder.map((id) => paymentsById[id]).filter((p): p is Payment => p?.studentId === studentId),
       ),

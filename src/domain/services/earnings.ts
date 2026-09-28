@@ -61,52 +61,107 @@ export const revenueSummary = (sessions: readonly Session[]): RevenueSummary =>
     return acc;
   }, ZERO);
 
-export interface StudentBalance {
-  /** Money actually received (paid payments). */
-  readonly collectedCents: Cents;
-  /**
-   * Money earned but not yet received: every completed session that isn't paid —
-   * using its pending/overdue payment's amount when one exists, otherwise the
-   * session's expected payment (it simply hasn't been billed yet) — plus any
-   * unpaid ad-hoc payments.
-   */
-  readonly owedCents: Cents;
-  /** How many completed sessions are still unpaid. */
-  readonly owedSessionCount: number;
+/** How one completed session's fee is settled. */
+export type SessionCoverage = 'paid' | 'credit' | 'partial' | 'unpaid';
+
+export interface SessionSettlement {
+  readonly status: SessionCoverage;
+  /** The session's fee: its pending/overdue payment's amount if billed, else expected. */
+  readonly feeCents: Cents;
+  /** How much prepaid credit was applied to it (0 unless 'credit' or 'partial'). */
+  readonly creditAppliedCents: Cents;
 }
 
+export interface StudentAccount {
+  /** All money actually received (every paid payment). */
+  readonly collectedCents: Cents;
+  /** Money received in advance: paid payments not tied to one of these sessions. */
+  readonly prepaidCents: Cents;
+  /** Prepaid credit not yet used up by completed sessions. */
+  readonly creditCents: Cents;
+  /** Earned but not received: unpaid completed sessions after credit, plus unpaid ad-hoc payments. */
+  readonly owedCents: Cents;
+  /** Completed sessions with any amount still unpaid after credit. */
+  readonly owedSessionCount: number;
+  /** Completed sessions settled wholly or partly by prepaid credit. */
+  readonly creditSessionCount: number;
+  /** Settlement for every COMPLETED session, keyed by session id. */
+  readonly settlements: ReadonlyMap<string, SessionSettlement>;
+}
+
+const chronological = (a: Session, b: Session) =>
+  a.date !== b.date ? (a.date < b.date ? -1 : 1) : a.startTime < b.startTime ? -1 : a.startTime > b.startTime ? 1 : 0;
+
 /**
- * Where a student's money stands, from their sessions and payments. Answers "has this
- * family paid me?" without requiring completed sessions to have been billed first.
- * Cancelled payments count for nothing; a session with any paid payment is settled.
+ * A student's running account: money in vs. sessions taught. Answers "has this family
+ * paid me?", "how much prepaid credit is left?" and "which sessions did it cover?".
+ *
+ * - A session with a PAID payment of its own is settled directly.
+ * - Every other paid payment — no session, or a session no longer in the list (e.g.
+ *   deleted) — is prepaid credit: the money was received but isn't tied to a session.
+ * - Credit is applied automatically to completed, not-directly-paid sessions, OLDEST
+ *   FIRST, covering a session fully ('credit') or, when it runs out, partly ('partial').
+ * - Nothing about the allocation is stored: undoing a completion, deleting a session or
+ *   editing an amount simply re-derives it (and can't create sync duplicates).
+ * - Cancelled payments count for nothing; scheduled/cancelled sessions owe nothing.
  */
-export const studentBalance = (sessions: readonly Session[], payments: readonly Payment[]): StudentBalance => {
+export const studentAccount = (sessions: readonly Session[], payments: readonly Payment[]): StudentAccount => {
+  const sessionIds = new Set(sessions.map((s) => s.id as string));
   const live = payments.filter((p) => p.status !== 'cancelled');
-  const bySession = new Map<string, Payment[]>();
+
   let collected = 0;
-  let owed = 0;
+  let prepaid = 0;
+  const bySession = new Map<string, Payment[]>();
   for (const p of live) {
-    if (p.status === 'paid') collected += p.amount;
-    if (p.sessionId) bySession.set(p.sessionId, [...(bySession.get(p.sessionId) ?? []), p]);
+    const own = p.sessionId != null && sessionIds.has(p.sessionId);
+    if (p.status === 'paid') {
+      collected += p.amount;
+      if (!own) prepaid += p.amount;
+    }
+    if (own) bySession.set(p.sessionId as string, [...(bySession.get(p.sessionId as string) ?? []), p]);
   }
 
-  const sessionIds = new Set(sessions.map((s) => s.id as string));
+  let credit = prepaid;
+  let owed = 0;
   let owedSessionCount = 0;
-  for (const s of sessions) {
-    if (s.status !== 'completed') continue;
+  let creditSessionCount = 0;
+  const settlements = new Map<string, SessionSettlement>();
+
+  for (const s of [...sessions].filter((x) => x.status === 'completed').sort(chronological)) {
     const forSession = bySession.get(s.id) ?? [];
-    if (forSession.some((p) => p.status === 'paid')) continue;
-    const pending = forSession[0];
-    owed += pending ? pending.amount : sessionPaymentCents(s);
-    owedSessionCount += 1;
+    const paidOwn = forSession.find((p) => p.status === 'paid');
+    if (paidOwn) {
+      settlements.set(s.id, { status: 'paid', feeCents: paidOwn.amount, creditAppliedCents: 0 as Cents });
+      continue;
+    }
+    const fee = forSession[0]?.amount ?? sessionPaymentCents(s);
+    const applied = Math.min(credit, fee);
+    credit -= applied;
+    const remaining = fee - applied;
+    owed += remaining;
+    if (applied > 0) creditSessionCount += 1;
+    if (remaining > 0) owedSessionCount += 1;
+    settlements.set(s.id, {
+      status: remaining === 0 ? 'credit' : applied > 0 ? 'partial' : 'unpaid',
+      feeCents: fee as Cents,
+      creditAppliedCents: applied as Cents,
+    });
   }
-  // Unpaid payments not tied to one of these completed sessions (ad-hoc, or a
-  // session that's no longer listed) still count as owed.
+
+  // Unpaid payments not tied to one of these sessions (ad-hoc) still count as owed.
   for (const p of live) {
     if (p.status === 'paid') continue;
-    if (p.sessionId && sessionIds.has(p.sessionId)) continue;
+    if (p.sessionId != null && sessionIds.has(p.sessionId)) continue;
     owed += p.amount;
   }
 
-  return { collectedCents: collected as Cents, owedCents: owed as Cents, owedSessionCount };
+  return {
+    collectedCents: collected as Cents,
+    prepaidCents: prepaid as Cents,
+    creditCents: credit as Cents,
+    owedCents: owed as Cents,
+    owedSessionCount,
+    creditSessionCount,
+    settlements,
+  };
 };
