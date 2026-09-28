@@ -9,12 +9,15 @@ import { Check, Copy } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../../../shared/theme';
 import { Button, HStack, Modal, Select, TextField, Text, VStack } from '../../../shared/ui';
-import type { Assignment, Session, SessionId, StudentId } from '../../../domain/types';
+import type { Assignment, Payment, Session, SessionId, StudentId } from '../../../domain/types';
+import { sessionsCoveredByCredit, studentAccount } from '../../../domain/services/earnings';
+import { formatCents } from '../../../shared/utils/money';
 import { renderTemplate } from '../../../domain/services/templates';
 import { buildCustomBase } from '../../../domain/services/customOrder';
 import { formatIsoDate, formatIsoTime } from '../../../shared/utils/datetime';
 import {
   useAssignmentsStore,
+  usePaymentsStore,
   useSessionsStore,
   useSettingsStore,
   useStudentsStore,
@@ -26,12 +29,14 @@ export interface GenerateEmailModalProps {
   onClose: () => void;
   session: Session;
   studentId: StudentId;
+  /** Template to select when the modal opens (e.g. the payment reminder). */
+  initialTemplateId?: string;
 }
 
 const homeworkLine = (a: Assignment): string =>
   `• ${a.title}${a.dueDate ? ` (due ${formatIsoDate(a.dueDate)})` : ''}`;
 
-export const GenerateEmailModal = ({ visible, onClose, session, studentId }: GenerateEmailModalProps) => {
+export const GenerateEmailModal = ({ visible, onClose, session, studentId, initialTemplateId }: GenerateEmailModalProps) => {
   const theme = useTheme();
 
   const templatesById = useTemplatesStore((s) => s.byId);
@@ -45,6 +50,10 @@ export const GenerateEmailModal = ({ visible, onClose, session, studentId }: Gen
 
   const sessionsById = useSessionsStore((s) => s.byId);
   const sessionIdsByStudent = useSessionsStore((s) => s.byStudent[studentId]);
+
+  const paymentsById = usePaymentsStore((s) => s.byId);
+  const paymentsOrder = usePaymentsStore((s) => s.order);
+  const loadPayments = usePaymentsStore((s) => s.loadByStudent);
 
   const assignmentsById = useAssignmentsStore((s) => s.byId);
   const assignmentIds = useAssignmentsStore((s) => s.bySession[session.id as SessionId]);
@@ -60,8 +69,10 @@ export const GenerateEmailModal = ({ visible, onClose, session, studentId }: Gen
     void loadSettings();
     if (!student) void loadStudents();
     void loadAssignments(session.id);
+    void loadPayments(studentId);
+    if (initialTemplateId) setTemplateId(initialTemplateId);
     setCopied(false);
-  }, [visible, student, loadTemplates, loadSettings, loadStudents, loadAssignments, session.id]);
+  }, [visible, student, loadTemplates, loadSettings, loadStudents, loadAssignments, loadPayments, studentId, session.id, initialTemplateId]);
 
   // Follow the same hand-arranged order the Templates screen uses.
   const templates = buildCustomBase(templateOrder, emailTemplateOrder)
@@ -82,6 +93,17 @@ export const GenerateEmailModal = ({ visible, onClose, session, studentId }: Gen
     return candidates[0] ?? null;
   }, [sessionIdsByStudent, sessionsById, session.date]);
 
+  // Prepaid credit, for {{credit_balance}} / {{sessions_left}} (see studentAccount).
+  const credit = useMemo(() => {
+    const sessions = (sessionIdsByStudent ?? []).map((id) => sessionsById[id]).filter((s): s is Session => Boolean(s));
+    const payments = paymentsOrder.map((id) => paymentsById[id]).filter((p): p is Payment => p?.studentId === studentId);
+    const account = studentAccount(sessions, payments);
+    const left = student
+      ? sessionsCoveredByCredit(account.creditCents, student.defaultHourlyRate, student.defaultDuration)
+      : null;
+    return { balance: formatCents(account.creditCents), sessionsLeft: String(left ?? 0) };
+  }, [sessionIdsByStudent, sessionsById, paymentsOrder, paymentsById, studentId, student]);
+
   const values = useMemo(() => {
     const assignments = (assignmentIds ?? [])
       .map((id) => assignmentsById[id])
@@ -94,8 +116,10 @@ export const GenerateEmailModal = ({ visible, onClose, session, studentId }: Gen
       next_date: nextSession ? formatIsoDate(nextSession.date) : '',
       next_time: nextSession ? formatIsoTime(nextSession.startTime) : '',
       homework: assignments.length > 0 ? assignments.map(homeworkLine).join('\n') : 'No homework assigned.',
+      credit_balance: credit.balance,
+      sessions_left: credit.sessionsLeft,
     };
-  }, [assignmentIds, assignmentsById, student, session.date, nextSession]);
+  }, [assignmentIds, assignmentsById, student, session.date, nextSession, credit]);
 
   const selectedTemplate = templateId ? templatesById[templateId] : undefined;
 

@@ -3,7 +3,7 @@
  * (e.g. "Created 3 payments"). Tone sets the tint and icon, so the meaning never
  * rides on color alone. Announced politely to screen readers.
  */
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import { View } from 'react-native';
 import { CircleAlert, CircleCheck, Info, X, type LucideIcon } from 'lucide-react-native';
 import { useTheme } from '../../theme';
@@ -17,6 +17,8 @@ export interface InlineNoticeProps {
   message: string;
   tone?: NoticeTone;
   onDismiss?: () => void;
+  /** A follow-up action placed at the trailing edge (e.g. a small Button). */
+  action?: ReactNode;
 }
 
 const TONES: Record<NoticeTone, { icon: LucideIcon; fg: keyof ThemeColors; bg: keyof ThemeColors }> = {
@@ -25,7 +27,7 @@ const TONES: Record<NoticeTone, { icon: LucideIcon; fg: keyof ThemeColors; bg: k
   danger: { icon: CircleAlert, fg: 'danger', bg: 'dangerMuted' },
 };
 
-export const InlineNotice = ({ message, tone = 'info', onDismiss }: InlineNoticeProps) => {
+export const InlineNotice = ({ message, tone = 'info', onDismiss, action }: InlineNoticeProps) => {
   const theme = useTheme();
   const t = TONES[tone];
   return (
@@ -38,7 +40,7 @@ export const InlineNotice = ({ message, tone = 'info', onDismiss }: InlineNotice
         gap: theme.space.sm + 2,
         minHeight: 44,
         paddingLeft: theme.space.md,
-        paddingRight: onDismiss ? theme.space.xs : theme.space.md,
+        paddingRight: onDismiss || action ? theme.space.xs : theme.space.md,
         borderRadius: theme.radii.md,
         backgroundColor: theme.colors[t.bg],
       }}
@@ -47,6 +49,7 @@ export const InlineNotice = ({ message, tone = 'info', onDismiss }: InlineNotice
       <Text variant="label" color={t.fg} style={{ flex: 1, paddingVertical: theme.space.sm }}>
         {message}
       </Text>
+      {action}
       {onDismiss ? <IconButton icon={X} size="sm" accessibilityLabel="Dismiss" onPress={onDismiss} /> : null}
     </View>
   );

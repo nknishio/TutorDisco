@@ -28,6 +28,7 @@ import {
   CircleDollarSign,
   Pencil,
   Trash2,
+  Mail,
   Undo2,
   Wallet,
 } from 'lucide-react-native';
@@ -41,6 +42,7 @@ import {
   EmptyState,
   HStack,
   Icon,
+  InlineNotice,
   Menu,
   Page,
   PageHeader,
@@ -66,11 +68,18 @@ import {
 import { formatCents } from '../../../shared/utils/money';
 import { formatIsoDate, formatIsoTime, formatDuration, todayIsoDate } from '../../../shared/utils/datetime';
 import { labelFor } from '../../../shared/utils/labels';
-import { useAssignmentsStore, usePaymentsStore, useSessionsStore, useStudentsStore } from '../../../store';
+import {
+  useAssignmentsStore,
+  usePaymentsStore,
+  useSessionsStore,
+  useStudentsStore,
+  useTemplatesStore,
+} from '../../../store';
 import type { StudentsScreenProps } from '../../../app/navigation/types';
 import { StudentFormModal } from '../components/StudentFormModal';
 import { SessionFormModal } from '../../sessions/components/SessionFormModal';
 import { PaymentFormModal } from '../../payments/components/PaymentFormModal';
+import { GenerateEmailModal } from '../../templates/components/GenerateEmailModal';
 
 type Props = StudentsScreenProps<'StudentDetail'>;
 
@@ -399,6 +408,14 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
   const [sessionOpen, setSessionOpen] = useState(false);
   const [payingId, setPayingId] = useState<string | null>(null);
   const [prepay, setPrepay] = useState<{ open: boolean; amountCents?: number }>({ open: false });
+  const [emailOpen, setEmailOpen] = useState(false);
+
+  const templatesById = useTemplatesStore((s) => s.byId);
+  const templateOrder = useTemplatesStore((s) => s.order);
+  const loadTemplates = useTemplatesStore((s) => s.load);
+  useEffect(() => {
+    void loadTemplates();
+  }, [loadTemplates]);
 
   useEffect(() => {
     if (!student) void loadStudents();
@@ -544,6 +561,33 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
       />
     );
 
+  // "When do I ask for more?" — once a family has prepaid, speak up when the credit is
+  // down to one session or less, with a one-tap email (the payment reminder template).
+  const lowCreditMessage = (() => {
+    if (account.prepaidCents === 0 || sessionsLeft == null) return null;
+    if (account.creditCents === 0) {
+      return account.owedCents > 0
+        ? `Prepaid credit is used up. ${formatCents(account.owedCents)} is owed.`
+        : 'Prepaid credit is used up.';
+    }
+    if (sessionsLeft === 0) return `Only ${formatCents(account.creditCents)} of prepaid credit left, less than one session.`;
+    if (sessionsLeft === 1) return `Prepaid credit covers 1 more session (${formatCents(account.creditCents)} left).`;
+    return null;
+  })();
+  const reminderTemplateId = templateOrder.find((id) => /payment/i.test(templatesById[id]?.title ?? ''));
+  const latestSession = sessions[0];
+  const lowCreditNotice = lowCreditMessage ? (
+    <InlineNotice
+      tone="info"
+      message={lowCreditMessage}
+      action={
+        latestSession ? (
+          <Button label="Email parent" size="sm" variant="secondary" icon={Mail} onPress={() => setEmailOpen(true)} />
+        ) : undefined
+      }
+    />
+  ) : null;
+
   const stats = (
     // Money first, answering "has this family paid me?", then the teaching record.
     <StatGroup>
@@ -632,6 +676,7 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
     <Page>
       {header}
       {stats}
+      {lowCreditNotice}
       {isCompact ? (
         <>
           {history}
@@ -645,6 +690,15 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
       )}
 
       <StudentFormModal visible={editOpen} onClose={() => setEditOpen(false)} student={student} />
+      {latestSession ? (
+        <GenerateEmailModal
+          visible={emailOpen}
+          onClose={() => setEmailOpen(false)}
+          session={latestSession}
+          studentId={student.id}
+          initialTemplateId={reminderTemplateId}
+        />
+      ) : null}
       <PaymentFormModal
         visible={prepay.open}
         onClose={() => setPrepay({ open: false })}

@@ -26,6 +26,8 @@ export const TEMPLATE_VARIABLES: readonly TemplateVariable[] = [
   { token: '{{next_time}}', key: 'next_time', label: 'Next session time', sample: '3:00 PM' },
   { token: '{{homework}}', key: 'homework', label: 'Homework', sample: '• Algebra worksheet (due Jun 20)' },
   { token: '{{parent_name}}', key: 'parent_name', label: 'Parent name', sample: 'Mr. Chen' },
+  { token: '{{credit_balance}}', key: 'credit_balance', label: 'Credit balance', sample: '$85.00' },
+  { token: '{{sessions_left}}', key: 'sessions_left', label: 'Sessions left', sample: '1' },
 ];
 
 /** Sample values keyed by variable, for previewing a template without real data. */
