@@ -146,7 +146,8 @@ export const usePaymentsStore = create<PaymentsState>((set, get) => ({
   },
 
   markSessionPaid: async (session, receivedDate) => {
-    const existing = get().forSession(session.id)[0];
+    // Never revive a cancelled payment (and its old amount); bill fresh instead.
+    const existing = get().forSession(session.id).find((p) => p.status !== 'cancelled');
     if (existing) return get().markPaid(existing.id, receivedDate);
     const billed = await get().billSession(session);
     if (!billed.ok) return billed;

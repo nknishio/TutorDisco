@@ -164,7 +164,9 @@ export type PaymentStandingReason =
   /** Its session was changed back to scheduled, cancelled or no-show. */
   | 'not_completed'
   /** Its session no longer exists (deleted). */
-  | 'no_session';
+  | 'no_session'
+  /** A $0 bill: nothing is owed. */
+  | 'nothing_due';
 
 export interface PaymentStanding {
   readonly reason: PaymentStandingReason;
@@ -200,6 +202,10 @@ export const standingByPayment = (
     const account = studentAccount(sessionsByStudent.get(studentId) ?? [], studentPayments);
     for (const p of studentPayments) {
       if (p.status !== 'pending' && p.status !== 'overdue') continue;
+      if (p.amount === 0) {
+        set(p, 'nothing_due', 0);
+        continue;
+      }
       if (p.sessionId == null) {
         set(p, 'requested', 0);
         continue;

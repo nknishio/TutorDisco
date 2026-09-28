@@ -61,8 +61,8 @@ export const revenueSummary = (sessions: readonly Session[]): RevenueSummary =>
     return acc;
   }, ZERO);
 
-/** How one completed session's fee is settled. */
-export type SessionCoverage = 'paid' | 'credit' | 'partial' | 'unpaid';
+/** How one completed session's fee is settled. 'free' = a $0 session: nothing due. */
+export type SessionCoverage = 'paid' | 'credit' | 'partial' | 'unpaid' | 'free';
 
 export interface SessionSettlement {
   readonly status: SessionCoverage;
@@ -147,6 +147,11 @@ export const studentAccount = (sessions: readonly Session[], payments: readonly 
       continue;
     }
     const fee = forSession[0]?.amount ?? sessionPaymentCents(s);
+    if (fee === 0) {
+      // A free session (e.g. a $0 trial) owes nothing and uses no credit.
+      settlements.set(s.id, { status: 'free', feeCents: 0 as Cents, creditAppliedCents: 0 as Cents });
+      continue;
+    }
     const applied = Math.min(credit, fee);
     credit -= applied;
     const remaining = fee - applied;

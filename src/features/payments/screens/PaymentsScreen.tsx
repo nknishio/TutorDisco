@@ -47,6 +47,7 @@ import {
   type PaymentSort,
   type PaymentSortColumn,
 } from '../../../domain/services/payments';
+import { sessionPaymentCents } from '../../../domain/services/earnings';
 import { formatCents } from '../../../shared/utils/money';
 import { formatIsoDate, formatIsoDateShort, todayIsoDate } from '../../../shared/utils/datetime';
 import { labelFor } from '../../../shared/utils/labels';
@@ -164,7 +165,10 @@ export const PaymentsScreen = (_props: Props) => {
     setGenerating(true);
     const billed = new Set<string>();
     for (const p of payments) if (p.sessionId) billed.add(p.sessionId);
-    const toBill = allSessions().filter((s) => s.status === 'completed' && !billed.has(s.id));
+    // Free ($0) sessions have nothing to bill.
+    const toBill = allSessions().filter(
+      (s) => s.status === 'completed' && !billed.has(s.id) && sessionPaymentCents(s) > 0,
+    );
     let created = 0;
     for (const sess of toBill) {
       const res = await billSession(sess);
@@ -215,6 +219,8 @@ export const PaymentsScreen = (_props: Props) => {
         return 'Session not completed';
       case 'no_session':
         return 'Session deleted';
+      case 'nothing_due':
+        return 'Nothing due';
       default:
         return labelFor(p.status);
     }
@@ -223,7 +229,7 @@ export const PaymentsScreen = (_props: Props) => {
     const r = reasonOf(p);
     if (r === 'prepaid') return 'success';
     if (r === 'partial') return 'warning';
-    if (r === 'requested' || r === 'not_completed' || r === 'no_session') return 'neutral';
+    if (r === 'requested' || r === 'not_completed' || r === 'no_session' || r === 'nothing_due') return 'neutral';
     return tone(p.status);
   };
 
