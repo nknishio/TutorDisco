@@ -79,7 +79,7 @@ export interface StudentAccount {
   readonly prepaidCents: Cents;
   /** Prepaid credit not yet used up by completed sessions. */
   readonly creditCents: Cents;
-  /** Earned but not received: unpaid completed sessions after credit, plus unpaid ad-hoc payments. */
+  /** Earned but not received: completed sessions not settled by their own payment or credit. */
   readonly owedCents: Cents;
   /** Completed sessions with any amount still unpaid after credit. */
   readonly owedSessionCount: number;
@@ -109,6 +109,7 @@ const chronological = (a: Session, b: Session) =>
  * - Nothing about the allocation is stored: undoing a completion, deleting a session or
  *   editing an amount simply re-derives it (and can't create sync duplicates).
  * - Cancelled payments count for nothing; scheduled/cancelled sessions owe nothing.
+ * - Owed counts completed sessions only — never an unpaid sessionless payment.
  */
 export const studentAccount = (sessions: readonly Session[], payments: readonly Payment[]): StudentAccount => {
   const sessionIds = new Set(sessions.map((s) => s.id as string));
@@ -153,12 +154,9 @@ export const studentAccount = (sessions: readonly Session[], payments: readonly 
     });
   }
 
-  // Unpaid payments not tied to one of these sessions (ad-hoc) still count as owed.
-  for (const p of live) {
-    if (p.status === 'paid') continue;
-    if (p.sessionId != null && sessionIds.has(p.sessionId)) continue;
-    owed += p.amount;
-  }
+  // Owed is only ever money for sessions taught. An unpaid payment with no session is a
+  // requested prepayment (not yet received, not yet earned), and an unpaid payment
+  // whose session is gone has nothing to be owed for — neither adds to owed.
 
   return {
     collectedCents: collected as Cents,

@@ -85,7 +85,9 @@ export const PaymentFormModal = ({
     setAmount(
       payment ? centsToDollars(payment.amount) : initialAmountCents ? centsToDollars(initialAmountCents) : '',
     );
-    setStatus(payment?.status ?? (isPrepayment ? 'paid' : 'pending'));
+    // A new payment with no session is money received in advance (prepaid credit), so
+    // it starts as Paid; picking a session switches it to Pending (billing that session).
+    setStatus(payment?.status ?? (isPrepayment || !payment?.sessionId ? 'paid' : 'pending'));
     setReceivedDate(payment?.receivedDate ?? todayIsoDate());
     setFormError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -118,6 +120,7 @@ export const PaymentFormModal = ({
   // Selecting a session auto-fills the amount from rate × duration.
   const onSelectSession = (value: string) => {
     setSession(value);
+    if (!isEdit) setStatus(value ? 'pending' : 'paid');
     const sess = value ? sessionsById[value] : undefined;
     if (sess) setAmount(centsToDollars(sessionPaymentCents(sess)));
   };
