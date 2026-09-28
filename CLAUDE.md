@@ -84,9 +84,20 @@ emailTemplates, satScores, satSkillPerformance. Most extend `BaseSqliteRepositor
 
 ## Screens & navigation
 
-Native stack (`src/app/navigation/`): `StudentsList` (home) → `StudentDetail` →
-`SessionDetail`; plus `Payments`, `RevenueDashboard`, `Templates`. URL scheme `easytutor://`.
-Auth screens live in `src/features/auth/` and render via `AuthGate`, not the stack.
+Tab navigator (`src/app/navigation/RootNavigator.tsx`) — bottom bar on phones, `Sidebar`
+at ≥ 1024 wide:
+- `StudentsTab` → native stack `StudentsList` → `StudentDetail` → `SessionDetail`
+- `Payments`, `RevenueDashboard` (tab screens)
+- `SettingsTab` → native stack `Settings` → `Templates`
+
+Screen names are unique across the tree; reaching a screen inside **another** tab's stack
+needs the nested form (`navigate('SettingsTab', { screen: 'Templates' })`). Screens type
+their props with `StudentsScreenProps` / `SettingsScreenProps` / `TabScreenProps`
+(`navigation/types.ts`). URLs are unchanged from the old single stack (`/`,
+`/students/:id`, `/sessions/:id`, `/payments`, `/revenue`, `/settings`, `/templates`);
+each nested stack sets `initialRouteName` so deep links still have Back. URL scheme
+`tutordisco://`. Auth screens live in `src/features/auth/` and render via `AuthGate`, not
+the navigator.
 
 ## How to add / change things (follow existing patterns)
 
@@ -103,9 +114,14 @@ defaults (`data/repositories/index.ts`), and `settingsStore.ts`; add a migration
 column. (See `defaultChecklistItems` / `defaultCalendarAlerts` as worked examples.)
 
 **Forms / modals:** reuse `useFormSubmit` (`src/shared/hooks`) for the submitting/error/Result
-lifecycle, and the UI kit (`src/shared/ui`: `Button`, `Card`, `TextField`, `Select`, `Modal`,
-`TimeField`, `Switch`, `DataTable`, `Badge`, primitives `VStack`/`HStack`/`Text`). Responsive
+lifecycle, and the UI kit in `src/shared/ui` (full inventory in `docs/DESIGN.md`). Responsive
 via `useResponsive()` (`isCompact`, `select(...)`); theme via `useTheme()`.
+
+**UI conventions (see `docs/DESIGN.md`):** screens are `Page` + `PageHeader` + `Section`/`Card`;
+spacing from `theme.space.*`, colors from semantic keys only; icons via lucide `Icon` /
+`IconButton` / `Button icon` — never emoji or unicode glyphs; status text through
+`labelFor()`; one primary action per screen, rare actions in a `Menu`, destructive ones
+confirmed. Ask what problem a control solves before adding it.
 
 **Calendar:** sessions are the source of truth and push out via a `CalendarProvider`
 (`integrations/calendar/`). Per-session/default alerts flow through `CalendarEventDraft.alarms`
@@ -152,9 +168,16 @@ Moves one whole `BackupData` snapshot through a KV-backed `/sync/:space` endpoin
   loads, the isolation headers above are never applied, and the web app hangs on the login
   screen with no error. `not_found_handling: "single-page-application"` is what makes a
   hard reload on a client-side route (`/settings`) resolve instead of 404.
-- **Web nested-Pressable double-fire:** `DataTable` rows are `Pressable` (`onRowPress`); an
-  in-row button can also bubble the row press on react-native-web. Be deliberate about
-  in-row actions vs. row navigation.
+- **Web nested-Pressable double-fire:** pressable rows (`DataTable`, `ListRow`, `Card
+  onPress`, session-history entries) can also receive an in-row control's press on
+  react-native-web. `Button`/`IconButton`/`Checkbox`/`Menu` call `stopPropagation`; any
+  custom in-row `Pressable` must too. Rows use `rowRole` (not `accessibilityRole="button"`),
+  because RNW renders the button role as a `<button>` and nested buttons are invalid HTML.
+- **Custom fonts pick weight by family:** `<Text weight>` maps to a loaded family via
+  `fontFor()`; setting `fontWeight` on Jakarta/Newsreader directly is ignored on Android
+  and faux-bolds on web.
+- **TextField focus ring is an `Animated.Value`,** not React state — re-rendering on focus
+  races native focus on the New Architecture and blurs the field. Keep it that way.
 - **Password hashing is salted SHA-256**, not a slow KDF — acceptable only because it's a
   local, offline, no-server app (no `expo-secure-store`). Don't reuse this for a server.
 - Stores cache by id; after a cross-account switch, stale data must be cleared via
@@ -162,6 +185,6 @@ Moves one whole `BackupData` snapshot through a KV-backed `/sync/:space` endpoin
 
 ## Docs
 
-`docs/SETUP.md` (run locally) · `docs/DEPLOYMENT.md` (ship) · `docs/TESTING.md` (test plan) ·
+`docs/SETUP.md` (run locally) · `docs/DEPLOYMENT.md` (ship) · `docs/DESIGN.md` (design system) · `docs/TESTING.md` (test plan) ·
 `docs/ROADMAP.md` · `REVIEW.md` (review findings). `architecture.md` and `docs/schema.md`
 are original design docs — useful for rationale, but verify against the code/migrations.

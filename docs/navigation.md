@@ -1,13 +1,10 @@
 # Navigation Map
 
-> ⚠️ **Status: original design doc — diverged from the as-built navigation.** The proposed
-> responsive tabs/sidebar shell and the `DashboardTab`/`ScheduleTab`/`BillingTab`/`SatTab`/
-> `SettingsTab` tree below were **not** built. As implemented (`src/app/navigation/`): a
-> single **native stack** with routes `StudentsList` (home) → `StudentDetail` →
-> `SessionDetail`, plus `Payments`, `RevenueDashboard`, and `Templates`. The whole stack is
-> wrapped by `AuthGate` (`src/app/providers/AuthGate.tsx`), which shows login/register until
-> a local account is signed in. URL scheme: `easytutor://`. See `CLAUDE.md` for the current
-> map. Keep this file for design rationale only.
+> ⚠️ **Status: original design doc — partly built.** The responsive tabs/sidebar shell
+> now exists, but with four tabs (`StudentsTab`, `Payments`, `RevenueDashboard`,
+> `SettingsTab`), not the `DashboardTab`/`ScheduleTab`/`BillingTab`/`SatTab` tree below.
+> See `CLAUDE.md` ("Screens & navigation") for the as-built map and `docs/DESIGN.md` for
+> the shell's layout. Keep this file for design rationale only.
 
 Navigation uses **React Navigation** with a typed route tree. (The responsive
 tabs-vs-sidebar shell described below was a design idea, not the current implementation.)
