@@ -102,8 +102,9 @@ const chronological = (a: Session, b: Session) =>
  * paid me?", "how much prepaid credit is left?" and "which sessions did it cover?".
  *
  * - A session with a PAID payment of its own is settled directly.
- * - Every other paid payment — no session, or a session no longer in the list (e.g.
- *   deleted) — is prepaid credit: the money was received but isn't tied to a session.
+ * - Every other paid payment — no session, a session no longer in the list (deleted),
+ *   or a session that was cancelled or a no-show — is prepaid credit: the money was
+ *   received but isn't paying for a session that happened.
  * - Credit is applied automatically to completed, not-directly-paid sessions, OLDEST
  *   FIRST, covering a session fully ('credit') or, when it runs out, partly ('partial').
  * - Nothing about the allocation is stored: undoing a completion, deleting a session or
@@ -113,6 +114,10 @@ const chronological = (a: Session, b: Session) =>
  */
 export const studentAccount = (sessions: readonly Session[], payments: readonly Payment[]): StudentAccount => {
   const sessionIds = new Set(sessions.map((s) => s.id as string));
+  // Sessions that didn't (or won't) happen: money paid for one of them isn't tied to it.
+  const didNotHappen = new Set(
+    sessions.filter((s) => s.status === 'cancelled' || s.status === 'no_show').map((s) => s.id as string),
+  );
   const live = payments.filter((p) => p.status !== 'cancelled');
 
   let collected = 0;
@@ -122,7 +127,8 @@ export const studentAccount = (sessions: readonly Session[], payments: readonly 
     const own = p.sessionId != null && sessionIds.has(p.sessionId);
     if (p.status === 'paid') {
       collected += p.amount;
-      if (!own) prepaid += p.amount;
+      // Credit: no session, a session that's gone, or one that was cancelled/no-show.
+      if (!own || didNotHappen.has(p.sessionId as string)) prepaid += p.amount;
     }
     if (own) bySession.set(p.sessionId as string, [...(bySession.get(p.sessionId as string) ?? []), p]);
   }

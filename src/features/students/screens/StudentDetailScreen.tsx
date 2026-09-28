@@ -323,6 +323,9 @@ const SessionHistoryEntry = ({
             )}
           />
           {coverage === 'paid' && session.status === 'completed' ? <Badge label="Paid" tone="success" /> : null}
+          {paid && (session.status === 'cancelled' || session.status === 'no_show') ? (
+            <Badge label="Paid · moved to credit" tone="info" />
+          ) : null}
           {coverage === 'credit' ? <Badge label="Prepaid" tone="success" /> : null}
           {coverage === 'partial' ? (
             <Badge label={`Partly prepaid · ${formatCents(due)} due`} tone="warning" />
