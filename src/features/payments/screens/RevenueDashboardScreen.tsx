@@ -23,10 +23,11 @@ import {
   VStack,
 } from '../../../shared/ui';
 import type { ThemeColors } from '../../../shared/theme/theme';
-import type { Payment } from '../../../domain/types';
+import type { Payment, Session } from '../../../domain/types';
 import {
+  creditCoverageByPayment,
   monthlyRevenueMap,
-  paymentTotals,
+  netPaymentTotals,
   revenuePerStudent,
 } from '../../../domain/services/payments';
 import { formatCents } from '../../../shared/utils/money';
@@ -36,7 +37,7 @@ import {
   formatMonthShort,
   recentMonthKeys,
 } from '../../../shared/utils/datetime';
-import { usePaymentsStore, useStudentsStore } from '../../../store';
+import { usePaymentsStore, useSessionsStore, useStudentsStore } from '../../../store';
 import type { TabScreenProps } from '../../../app/navigation/types';
 
 type Props = TabScreenProps<'RevenueDashboard'>;
@@ -52,20 +53,29 @@ export const RevenueDashboardScreen = (_props: Props) => {
   const order = usePaymentsStore((s) => s.order);
   const loadPayments = usePaymentsStore((s) => s.loadAll);
 
+  const sessionsById = useSessionsStore((s) => s.byId);
+  const loadSessions = useSessionsStore((s) => s.loadAll);
+
   const studentsById = useStudentsStore((s) => s.byId);
   const loadStudents = useStudentsStore((s) => s.load);
 
   useEffect(() => {
     void loadStudents();
     void loadPayments();
-  }, [loadStudents, loadPayments]);
+    void loadSessions();
+  }, [loadStudents, loadPayments, loadSessions]);
 
   const payments = useMemo(
     () => order.map((id) => byId[id]).filter((p): p is Payment => Boolean(p)),
     [order, byId],
   );
 
-  const totals = useMemo(() => paymentTotals(payments), [payments]);
+  // Prepaid credit is netted out of what's outstanding (see creditCoverageByPayment).
+  const coverage = useMemo(
+    () => creditCoverageByPayment(payments, Object.values(sessionsById).filter(Boolean) as Session[]),
+    [payments, sessionsById],
+  );
+  const totals = useMemo(() => netPaymentTotals(payments, coverage), [payments, coverage]);
 
   const monthSeries = useMemo(() => {
     const map = monthlyRevenueMap(payments);
@@ -88,16 +98,19 @@ export const RevenueDashboardScreen = (_props: Props) => {
 
   const perStudent = useMemo(
     () =>
-      revenuePerStudent(payments)
+      revenuePerStudent(payments, coverage)
         .filter((r) => r.billedCents > 0)
         .map((r) => ({
           id: r.studentId as string,
           label: studentsById[r.studentId]?.name ?? 'Unknown',
           value: r.billedCents,
           filled: r.paidCents,
-          valueLabel: `${formatCents(r.paidCents)} of ${formatCents(r.billedCents)}`,
+          valueLabel:
+            r.outstandingCents === 0
+              ? `${formatCents(r.paidCents)} collected`
+              : `${formatCents(r.paidCents)} of ${formatCents(r.billedCents)}`,
         })),
-    [payments, studentsById],
+    [payments, studentsById, coverage],
   );
 
   const lifetimeBilled = totals.paidCents + totals.outstandingCents;

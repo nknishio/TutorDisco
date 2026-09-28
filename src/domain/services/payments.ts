@@ -266,13 +266,17 @@ export interface StudentRevenue {
 }
 
 /** Per-student revenue, sorted by total billed descending. */
-export const revenuePerStudent = (payments: readonly Payment[]): StudentRevenue[] => {
+export const revenuePerStudent = (
+  payments: readonly Payment[],
+  /** Prepaid-credit coverage (see creditCoverageByPayment); covered amounts aren't outstanding. */
+  coverage?: ReadonlyMap<string, Cents>,
+): StudentRevenue[] => {
   const map = new Map<string, { paid: number; outstanding: number }>();
   for (const p of payments) {
     if (p.status === 'cancelled') continue;
     const b = map.get(p.studentId) ?? { paid: 0, outstanding: 0 };
     if (p.status === 'paid') b.paid += p.amount;
-    else b.outstanding += p.amount; // pending + overdue
+    else b.outstanding += p.amount - (coverage?.get(p.id) ?? 0); // pending + overdue, net of credit
     map.set(p.studentId, b);
   }
   return [...map.entries()]

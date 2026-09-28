@@ -4,9 +4,13 @@
  * Filter by status (pending / paid / overdue), mark a payment paid in one tap, add
  * an ad-hoc payment, or auto-generate pending payments for completed sessions that
  * haven't been billed yet (amount = rate × duration). Deleting asks first.
+ *
+ * Prepaid credit (money received in advance, see `studentAccount`) is netted out: a
+ * billed payment that a family's credit already covers shows "Prepaid", has no
+ * Mark paid, and isn't counted in Outstanding.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { CircleDollarSign, Pencil, Plus, Receipt, Trash2, Wand2 } from 'lucide-react-native';
+import { CircleDollarSign, Pencil, Plus, Receipt, Trash2, Wallet, Wand2 } from 'lucide-react-native';
 import { useTheme } from '../../../shared/theme';
 import { useResponsive } from '../../../shared/responsive';
 import {
@@ -33,9 +37,10 @@ import {
   type MenuItem,
 } from '../../../shared/ui';
 import type { BadgeTone } from '../../../shared/ui';
-import type { Payment, PaymentStatus } from '../../../domain/types';
+import type { Payment, PaymentStatus, Session, StudentId } from '../../../domain/types';
 import {
-  paymentTotals,
+  creditCoverageByPayment,
+  netPaymentTotals,
   sortPayments,
   type PaymentSort,
   type PaymentSortColumn,
@@ -87,6 +92,7 @@ export const PaymentsScreen = (_props: Props) => {
   const [generating, setGenerating] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<Payment | null>(null);
+  const [topUp, setTopUp] = useState<{ studentId: StudentId; amountCents: number } | null>(null);
 
   useEffect(() => {
     void loadStudents();
@@ -98,16 +104,31 @@ export const PaymentsScreen = (_props: Props) => {
     () => order.map((id) => byId[id]).filter((p): p is Payment => Boolean(p)),
     [order, byId],
   );
-  const totals = useMemo(() => paymentTotals(payments), [payments]);
+  // How much of each billed payment the family's prepaid credit already covers.
+  const coverage = useMemo(
+    () => creditCoverageByPayment(payments, Object.values(sessionsById).filter(Boolean) as Session[]),
+    [payments, sessionsById],
+  );
+  const totals = useMemo(() => netPaymentTotals(payments, coverage), [payments, coverage]);
+  const coveredCents = (p: Payment) => coverage.get(p.id) ?? 0;
+  const isCovered = (p: Payment) => coveredCents(p) >= p.amount;
+  const dueCents = (p: Payment) => p.amount - coveredCents(p);
 
+  // Pending/Overdue mean "money still to collect", so fully prepaid rows are left out
+  // (matching the netted tiles); they still show under All.
   const visible = useMemo(
-    () => (filter === 'all' ? payments : payments.filter((p) => p.status === filter)),
-    [payments, filter],
+    () =>
+      filter === 'all'
+        ? payments
+        : payments.filter(
+            (p) => p.status === filter && !((filter === 'pending' || filter === 'overdue') && (coverage.get(p.id) ?? 0) >= p.amount),
+          ),
+    [payments, filter, coverage],
   );
 
   const studentName = (p: Payment) => studentsById[p.studentId]?.name ?? 'Unknown';
   const sessionDate = (p: Payment) => {
-    if (!p.sessionId) return 'Ad-hoc';
+    if (!p.sessionId) return 'Prepayment';
     const sess = sessionsById[p.sessionId];
     return sess ? formatIsoDateShort(sess.date, new Date().getFullYear()) : '—';
   };
@@ -149,8 +170,19 @@ export const PaymentsScreen = (_props: Props) => {
     );
   };
 
-  const canMarkPaid = (p: Payment) => p.status !== 'paid' && p.status !== 'cancelled';
+  // Partly covered rows record the rest as more credit instead (keeps the math exact).
+  const canMarkPaid = (p: Payment) => p.status !== 'paid' && p.status !== 'cancelled' && coveredCents(p) === 0;
+  const isPartial = (p: Payment) => coveredCents(p) > 0 && !isCovered(p);
   const rowMenu = (p: Payment): MenuItem[] => [
+    ...(isPartial(p)
+      ? [
+          {
+            label: `Record ${formatCents(dueCents(p))}…`,
+            icon: Wallet,
+            onSelect: () => setTopUp({ studentId: p.studentId, amountCents: dueCents(p) }),
+          },
+        ]
+      : []),
     // Phones have no room for the inline button, so Mark paid leads the menu there.
     ...(isCompact && canMarkPaid(p)
       ? [{ label: 'Mark paid', icon: CircleDollarSign, onSelect: () => void markPaid(p.id, todayIsoDate()) }]
@@ -214,7 +246,14 @@ export const PaymentsScreen = (_props: Props) => {
       flex: 1,
       align: 'right',
       sortable: true,
-      render: (p) => <Badge label={labelFor(p.status)} tone={tone(p.status)} />,
+      render: (p) =>
+        isCovered(p) ? (
+          <Badge label="Prepaid" tone="success" />
+        ) : isPartial(p) ? (
+          <Badge label={`${formatCents(dueCents(p))} due`} tone="warning" />
+        ) : (
+          <Badge label={labelFor(p.status)} tone={tone(p.status)} />
+        ),
     },
     {
       id: 'received',
@@ -317,7 +356,9 @@ export const PaymentsScreen = (_props: Props) => {
               divider={i > 0}
               leading={<Avatar name={studentName(p)} size="sm" />}
               title={studentName(p)}
-              subtitle={`${sessionDate(p)} · ${labelFor(p.status)}`}
+              subtitle={`${sessionDate(p)} · ${
+                isCovered(p) ? 'Prepaid' : isPartial(p) ? `${formatCents(dueCents(p))} due` : labelFor(p.status)
+              }`}
               meta={formatCents(p.amount)}
               onPress={() => setEditing(p)}
               trailing={<Menu items={rowMenu(p)} accessibilityLabel="Payment actions" />}
@@ -382,6 +423,13 @@ export const PaymentsScreen = (_props: Props) => {
       </VStack>
 
       <PaymentFormModal visible={addOpen} onClose={() => setAddOpen(false)} />
+      <PaymentFormModal
+        visible={topUp != null}
+        onClose={() => setTopUp(null)}
+        studentId={topUp?.studentId}
+        prepayment
+        initialAmountCents={topUp?.amountCents}
+      />
       <PaymentFormModal
         visible={editing != null}
         onClose={() => setEditing(null)}
