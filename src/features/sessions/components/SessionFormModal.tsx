@@ -48,6 +48,7 @@ import {
   CALENDAR_PROVIDER_OPTIONS,
   useCalendarStore,
   useChecklistStore,
+  usePaymentsStore,
   useSessionsStore,
   useSettingsStore,
   useStudentsStore,
@@ -96,6 +97,7 @@ export const SessionFormModal = ({
   const isEdit = Boolean(session);
   const create = useSessionsStore((s) => s.create);
   const update = useSessionsStore((s) => s.update);
+  const syncSessionFee = usePaymentsStore((s) => s.syncSessionFee);
 
   const studentName = useStudentsStore((s) => s.byId[studentId]?.name) ?? 'Student';
 
@@ -258,6 +260,12 @@ export const SessionFormModal = ({
     void submit(
       () => (session ? update({ id: session.id, ...fields }) : create(fields)),
       async (saved) => {
+        // A new rate or length changes what's owed: bring any unpaid billed payment for
+        // this session to the new fee (paid ones are left alone). Only when those
+        // fields changed, so editing notes never overwrites a hand-typed amount.
+        if (session && (saved.hourlyRate !== session.hourlyRate || saved.duration !== session.duration)) {
+          await syncSessionFee(saved);
+        }
         // New session: attach the selected default checklist items (best-effort).
         if (!session) {
           for (const text of selectedDefaultItems) {

@@ -291,7 +291,7 @@ const SessionHistoryEntry = ({
               {formatIsoTime(session.startTime)}
             </Text>
             <Text variant="label" color="textMuted" tabular>
-              {formatDuration(session.duration)} · {formatCents(sessionPaymentCents(session))}
+              {formatDuration(session.duration)} · {formatCents(settlement?.feeCents ?? sessionPaymentCents(session))}
             </Text>
           </VStack>
           <HStack gap={theme.space.xs} align="center">

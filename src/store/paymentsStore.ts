@@ -18,6 +18,7 @@ import type {
   UpdateInput,
 } from '../domain/types';
 import { paymentForSession } from '../domain/services/payments';
+import { sessionPaymentCents } from '../domain/services/earnings';
 import { err } from '../shared/utils/result';
 
 type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -44,6 +45,13 @@ interface PaymentsState {
   markSessionPaid: (session: Session, receivedDate: IsoDate) => Promise<Result<Payment>>;
   /** Revert a session's paid payment back to pending (e.g. marked paid by mistake). */
   markSessionUnpaid: (sessionId: SessionId) => Promise<Result<Payment>>;
+  /**
+   * After a session's rate or length changes, bring its UNPAID (pending/overdue)
+   * payments to the new fee. Paid payments record money actually received and are
+   * never changed. Reads the repository, so it works even if this student's payments
+   * aren't in the cache yet.
+   */
+  syncSessionFee: (session: Session) => Promise<void>;
   markPending: (id: PaymentId) => Promise<Result<Payment>>;
   remove: (id: PaymentId) => Promise<Result<void>>;
 }
@@ -144,6 +152,17 @@ export const usePaymentsStore = create<PaymentsState>((set, get) => ({
     const paid = get().forSession(sessionId).find((p) => p.status === 'paid');
     if (!paid) return err('not_found', 'No paid payment to revert for this session.');
     return get().markPending(paid.id);
+  },
+
+  syncSessionFee: async (session) => {
+    const fee = sessionPaymentCents(session);
+    const payments = await getRepositories().payments.listBySession(session.id);
+    for (const p of payments) {
+      if ((p.status === 'pending' || p.status === 'overdue') && p.amount !== fee) {
+        const res = await getRepositories().payments.update({ id: p.id, amount: fee });
+        if (res.ok) set((s) => upsert(s, res.value));
+      }
+    }
   },
 
   markPending: async (id) => {
