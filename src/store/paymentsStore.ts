@@ -52,6 +52,11 @@ interface PaymentsState {
    * aren't in the cache yet.
    */
   syncSessionFee: (session: Session) => Promise<void>;
+  /**
+   * When a session is deleted, remove its UNPAID payments (a bill for a session that no
+   * longer exists). Paid payments stay — that money was received and becomes credit.
+   */
+  removeUnpaidForSession: (sessionId: SessionId) => Promise<void>;
   markPending: (id: PaymentId) => Promise<Result<Payment>>;
   remove: (id: PaymentId) => Promise<Result<void>>;
 }
@@ -162,6 +167,13 @@ export const usePaymentsStore = create<PaymentsState>((set, get) => ({
         const res = await getRepositories().payments.update({ id: p.id, amount: fee });
         if (res.ok) set((s) => upsert(s, res.value));
       }
+    }
+  },
+
+  removeUnpaidForSession: async (sessionId) => {
+    const payments = await getRepositories().payments.listBySession(sessionId);
+    for (const p of payments) {
+      if (p.status === 'pending' || p.status === 'overdue') await get().remove(p.id);
     }
   },
 

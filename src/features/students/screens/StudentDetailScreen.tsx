@@ -56,7 +56,7 @@ import {
   type BadgeTone,
   type MenuItem,
 } from '../../../shared/ui';
-import type { Assignment, Payment, Session, SessionStatus, StudentStatus } from '../../../domain/types';
+import type { Assignment, Payment, Session, SessionId, SessionStatus, StudentStatus } from '../../../domain/types';
 import { SESSION_STATUSES } from '../../../domain/types';
 import {
   revenueSummary,
@@ -393,6 +393,13 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
   const loadByStudent = useSessionsStore((s) => s.loadByStudent);
   const updateSession = useSessionsStore((s) => s.update);
   const removeSession = useSessionsStore((s) => s.remove);
+  const removeUnpaidForSession = usePaymentsStore((s) => s.removeUnpaidForSession);
+  // Deleting a session also drops its unpaid bill; money already paid for it stays and
+  // becomes credit (see studentAccount).
+  const onDeleteSession = async (id: SessionId) => {
+    const res = await removeSession(id);
+    if (res.ok) await removeUnpaidForSession(id);
+  };
 
   const assignmentsBySession = useAssignmentsStore((s) => s.bySession);
   const assignmentsById = useAssignmentsStore((s) => s.byId);
@@ -664,7 +671,7 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
               onChangeStatus={(status) => void updateSession({ id: s.id, status })}
               onMarkPaid={() => void onMarkSessionPaid(s)}
               onUnmarkPaid={() => void markSessionUnpaid(s.id)}
-              onDelete={() => void removeSession(s.id)}
+              onDelete={() => void onDeleteSession(s.id)}
             />
           ))}
         </Card>

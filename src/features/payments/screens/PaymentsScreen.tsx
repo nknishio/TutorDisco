@@ -5,9 +5,10 @@
  * an ad-hoc payment, or auto-generate pending payments for completed sessions that
  * haven't been billed yet (amount = rate × duration). Deleting asks first.
  *
- * Prepaid credit (money received in advance, see `studentAccount`) is netted out: a
- * billed payment that a family's credit already covers shows "Prepaid", has no
- * Mark paid, and isn't counted in Outstanding.
+ * Outstanding counts only what's really owed (see `standingByPayment`): a billed payment
+ * a family's prepaid credit covers shows "Prepaid"; one whose session was un-completed
+ * or deleted, or a requested prepayment with no session, is shown for what it is and
+ * left out of Outstanding and the Pending/Overdue filters.
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { CircleDollarSign, Pencil, Plus, Receipt, Trash2, Wallet, Wand2 } from 'lucide-react-native';
@@ -39,8 +40,9 @@ import {
 import type { BadgeTone } from '../../../shared/ui';
 import type { Payment, PaymentStatus, Session, StudentId } from '../../../domain/types';
 import {
-  creditCoverageByPayment,
   netPaymentTotals,
+  standingByPayment,
+  type PaymentStandingReason,
   sortPayments,
   type PaymentSort,
   type PaymentSortColumn,
@@ -104,26 +106,32 @@ export const PaymentsScreen = (_props: Props) => {
     () => order.map((id) => byId[id]).filter((p): p is Payment => Boolean(p)),
     [order, byId],
   );
-  // How much of each billed payment the family's prepaid credit already covers.
-  const coverage = useMemo(
-    () => creditCoverageByPayment(payments, Object.values(sessionsById).filter(Boolean) as Session[]),
-    [payments, sessionsById],
+  // What each unpaid payment really represents, and how much of it is owed.
+  const sessionsAllLoaded = useSessionsStore((s) => s.allLoaded);
+  const standing = useMemo(
+    () =>
+      standingByPayment(payments, Object.values(sessionsById).filter(Boolean) as Session[], {
+        sessionsComplete: sessionsAllLoaded,
+      }),
+    [payments, sessionsById, sessionsAllLoaded],
   );
-  const totals = useMemo(() => netPaymentTotals(payments, coverage), [payments, coverage]);
-  const coveredCents = (p: Payment) => coverage.get(p.id) ?? 0;
-  const isCovered = (p: Payment) => coveredCents(p) >= p.amount;
-  const dueCents = (p: Payment) => p.amount - coveredCents(p);
+  const totals = useMemo(() => netPaymentTotals(payments, standing), [payments, standing]);
+  const reasonOf = (p: Payment): PaymentStandingReason | null => standing.get(p.id)?.reason ?? null;
+  const dueCents = (p: Payment) => standing.get(p.id)?.outstandingCents ?? p.amount;
 
-  // Pending/Overdue mean "money still to collect", so fully prepaid rows are left out
-  // (matching the netted tiles); they still show under All.
+  // Pending/Overdue mean "money still to collect", so rows with nothing owed (prepaid,
+  // requested, un-completed or deleted session) are left out, matching the tiles; they
+  // still show under All.
   const visible = useMemo(
     () =>
       filter === 'all'
         ? payments
         : payments.filter(
-            (p) => p.status === filter && !((filter === 'pending' || filter === 'overdue') && (coverage.get(p.id) ?? 0) >= p.amount),
+            (p) =>
+              p.status === filter &&
+              ((filter !== 'pending' && filter !== 'overdue') || (standing.get(p.id)?.outstandingCents ?? p.amount) > 0),
           ),
-    [payments, filter, coverage],
+    [payments, filter, standing],
   );
 
   const studentName = (p: Payment) => studentsById[p.studentId]?.name ?? 'Unknown';
@@ -171,8 +179,13 @@ export const PaymentsScreen = (_props: Props) => {
   };
 
   // Partly covered rows record the rest as more credit instead (keeps the math exact).
-  const canMarkPaid = (p: Payment) => p.status !== 'paid' && p.status !== 'cancelled' && coveredCents(p) === 0;
-  const isPartial = (p: Payment) => coveredCents(p) > 0 && !isCovered(p);
+  // Mark paid only where money is genuinely expected: an owed session or a requested
+  // prepayment. Partly covered rows record the rest as credit instead.
+  const canMarkPaid = (p: Payment) => {
+    const r = reasonOf(p);
+    return (p.status === 'pending' || p.status === 'overdue') && (r === null || r === 'owed' || r === 'requested');
+  };
+  const isPartial = (p: Payment) => reasonOf(p) === 'partial';
   const rowMenu = (p: Payment): MenuItem[] => [
     ...(isPartial(p)
       ? [
@@ -190,6 +203,30 @@ export const PaymentsScreen = (_props: Props) => {
     { label: 'Edit payment', icon: Pencil, onSelect: () => setEditing(p) },
     { label: 'Delete payment', icon: Trash2, destructive: true, onSelect: () => setConfirming(p) },
   ];
+  const statusText = (p: Payment): string => {
+    switch (reasonOf(p)) {
+      case 'prepaid':
+        return 'Prepaid';
+      case 'partial':
+        return `${formatCents(dueCents(p))} due`;
+      case 'requested':
+        return 'Requested';
+      case 'not_completed':
+        return 'Session not completed';
+      case 'no_session':
+        return 'Session deleted';
+      default:
+        return labelFor(p.status);
+    }
+  };
+  const statusTone = (p: Payment): BadgeTone => {
+    const r = reasonOf(p);
+    if (r === 'prepaid') return 'success';
+    if (r === 'partial') return 'warning';
+    if (r === 'requested' || r === 'not_completed' || r === 'no_session') return 'neutral';
+    return tone(p.status);
+  };
+
   const markPaidButton = (p: Payment) => (
     <Button
       label="Mark paid"
@@ -246,14 +283,7 @@ export const PaymentsScreen = (_props: Props) => {
       flex: 1,
       align: 'right',
       sortable: true,
-      render: (p) =>
-        isCovered(p) ? (
-          <Badge label="Prepaid" tone="success" />
-        ) : isPartial(p) ? (
-          <Badge label={`${formatCents(dueCents(p))} due`} tone="warning" />
-        ) : (
-          <Badge label={labelFor(p.status)} tone={tone(p.status)} />
-        ),
+      render: (p) => <Badge label={statusText(p)} tone={statusTone(p)} />,
     },
     {
       id: 'received',
@@ -356,9 +386,7 @@ export const PaymentsScreen = (_props: Props) => {
               divider={i > 0}
               leading={<Avatar name={studentName(p)} size="sm" />}
               title={studentName(p)}
-              subtitle={`${sessionDate(p)} · ${
-                isCovered(p) ? 'Prepaid' : isPartial(p) ? `${formatCents(dueCents(p))} due` : labelFor(p.status)
-              }`}
+              subtitle={`${sessionDate(p)} · ${statusText(p)}`}
               meta={formatCents(p.amount)}
               onPress={() => setEditing(p)}
               trailing={<Menu items={rowMenu(p)} accessibilityLabel="Payment actions" />}

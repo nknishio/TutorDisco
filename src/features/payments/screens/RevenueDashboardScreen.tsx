@@ -25,9 +25,9 @@ import {
 import type { ThemeColors } from '../../../shared/theme/theme';
 import type { Payment, Session } from '../../../domain/types';
 import {
-  creditCoverageByPayment,
   monthlyRevenueMap,
   netPaymentTotals,
+  standingByPayment,
   revenuePerStudent,
 } from '../../../domain/services/payments';
 import { formatCents } from '../../../shared/utils/money';
@@ -70,12 +70,16 @@ export const RevenueDashboardScreen = (_props: Props) => {
     [order, byId],
   );
 
-  // Prepaid credit is netted out of what's outstanding (see creditCoverageByPayment).
-  const coverage = useMemo(
-    () => creditCoverageByPayment(payments, Object.values(sessionsById).filter(Boolean) as Session[]),
-    [payments, sessionsById],
+  // Outstanding counts only what's really owed (see standingByPayment).
+  const sessionsAllLoaded = useSessionsStore((s) => s.allLoaded);
+  const standing = useMemo(
+    () =>
+      standingByPayment(payments, Object.values(sessionsById).filter(Boolean) as Session[], {
+        sessionsComplete: sessionsAllLoaded,
+      }),
+    [payments, sessionsById, sessionsAllLoaded],
   );
-  const totals = useMemo(() => netPaymentTotals(payments, coverage), [payments, coverage]);
+  const totals = useMemo(() => netPaymentTotals(payments, standing), [payments, standing]);
 
   const monthSeries = useMemo(() => {
     const map = monthlyRevenueMap(payments);
@@ -98,7 +102,7 @@ export const RevenueDashboardScreen = (_props: Props) => {
 
   const perStudent = useMemo(
     () =>
-      revenuePerStudent(payments, coverage)
+      revenuePerStudent(payments, standing)
         .filter((r) => r.billedCents > 0)
         .map((r) => ({
           id: r.studentId as string,
@@ -110,7 +114,7 @@ export const RevenueDashboardScreen = (_props: Props) => {
               ? `${formatCents(r.paidCents)} collected`
               : `${formatCents(r.paidCents)} of ${formatCents(r.billedCents)}`,
         })),
-    [payments, studentsById, coverage],
+    [payments, studentsById, standing],
   );
 
   const lifetimeBilled = totals.paidCents + totals.outstandingCents;

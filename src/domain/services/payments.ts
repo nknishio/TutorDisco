@@ -148,60 +148,105 @@ export const paymentTotals = (payments: readonly Payment[]): PaymentTotals => {
 };
 
 // ---------------------------------------------------------------------------
-// Prepaid credit netting
+// Outstanding: what an unpaid payment really represents
 // ---------------------------------------------------------------------------
 
+/** Why an unpaid (pending/overdue) payment is — or isn't — money still owed. */
+export type PaymentStandingReason =
+  /** Billed for a completed session and not covered: owed in full. */
+  | 'owed'
+  /** Its completed session is fully covered by prepaid credit. */
+  | 'prepaid'
+  /** Its completed session is partly covered by prepaid credit; the rest is owed. */
+  | 'partial'
+  /** No session: a requested prepayment — not yet received, not yet earned. */
+  | 'requested'
+  /** Its session was changed back to scheduled, cancelled or no-show. */
+  | 'not_completed'
+  /** Its session no longer exists (deleted). */
+  | 'no_session';
+
+export interface PaymentStanding {
+  readonly reason: PaymentStandingReason;
+  /** The part of the payment that is actually owed (0 unless 'owed' or 'partial'). */
+  readonly outstandingCents: Cents;
+}
+
 /**
- * How much of each pending/overdue payment is already covered by its student's prepaid
- * credit (see `studentAccount`). A payment billed for a session that credit settles is
- * not money owed, so the Payments screen labels it "Covered by prepayment" and leaves it
- * out of Outstanding. Keyed by payment id; payments with no coverage are absent.
+ * For every pending/overdue payment, how much of it is really owed — the same rules
+ * the student page uses (`studentAccount`): only completed sessions are owed, net of
+ * prepaid credit. Keyed by payment id; paid/cancelled payments are absent.
+ *
+ * `sessionsComplete` says `sessions` holds every session, so a payment whose session
+ * is missing was deleted. When false (still loading), such payments count as owed
+ * rather than being mislabelled.
  */
-export const creditCoverageByPayment = (
+export const standingByPayment = (
   payments: readonly Payment[],
   sessions: readonly Session[],
-): ReadonlyMap<string, Cents> => {
+  { sessionsComplete }: { sessionsComplete: boolean },
+): ReadonlyMap<string, PaymentStanding> => {
+  const sessionsById = new Map(sessions.map((s) => [s.id as string, s]));
   const sessionsByStudent = new Map<string, Session[]>();
   for (const s of sessions) sessionsByStudent.set(s.studentId, [...(sessionsByStudent.get(s.studentId) ?? []), s]);
   const paymentsByStudent = new Map<string, Payment[]>();
   for (const p of payments) paymentsByStudent.set(p.studentId, [...(paymentsByStudent.get(p.studentId) ?? []), p]);
 
-  const covered = new Map<string, Cents>();
+  const out = new Map<string, PaymentStanding>();
+  const set = (p: Payment, reason: PaymentStandingReason, outstanding: number) =>
+    out.set(p.id, { reason, outstandingCents: Math.max(0, outstanding) as Cents });
+
   for (const [studentId, studentPayments] of paymentsByStudent) {
     const account = studentAccount(sessionsByStudent.get(studentId) ?? [], studentPayments);
     for (const p of studentPayments) {
-      if ((p.status !== 'pending' && p.status !== 'overdue') || p.sessionId == null) continue;
-      const settlement = account.settlements.get(p.sessionId);
-      if (settlement && settlement.creditAppliedCents > 0) {
-        covered.set(p.id, Math.min(p.amount, settlement.creditAppliedCents) as Cents);
+      if (p.status !== 'pending' && p.status !== 'overdue') continue;
+      if (p.sessionId == null) {
+        set(p, 'requested', 0);
+        continue;
       }
+      const session = sessionsById.get(p.sessionId);
+      if (!session) {
+        if (sessionsComplete) set(p, 'no_session', 0);
+        else set(p, 'owed', p.amount);
+        continue;
+      }
+      if (session.status !== 'completed') {
+        set(p, 'not_completed', 0);
+        continue;
+      }
+      const applied = account.settlements.get(p.sessionId)?.creditAppliedCents ?? 0;
+      if (applied >= p.amount) set(p, 'prepaid', 0);
+      else if (applied > 0) set(p, 'partial', p.amount - applied);
+      else set(p, 'owed', p.amount);
     }
   }
-  return covered;
+  return out;
 };
 
 /**
- * `paymentTotals` with prepaid credit netted out: covered amounts leave pending/overdue
- * (and a fully covered payment leaves the counts). Collected is unchanged.
+ * `paymentTotals` counting only what's really owed (see `standingByPayment`): prepaid,
+ * requested, not-completed and orphaned amounts leave pending/overdue and the counts.
+ * Collected is unchanged.
  */
 export const netPaymentTotals = (
   payments: readonly Payment[],
-  coverage: ReadonlyMap<string, Cents>,
+  standing: ReadonlyMap<string, PaymentStanding>,
 ): PaymentTotals => {
   const gross = paymentTotals(payments);
-  let pending = gross.pendingCents as number;
-  let overdue = gross.overdueCents as number;
-  let pendingCount = gross.pendingCount;
-  let overdueCount = gross.overdueCount;
+  let pending = 0;
+  let overdue = 0;
+  let pendingCount = 0;
+  let overdueCount = 0;
   for (const p of payments) {
-    const c = coverage.get(p.id);
-    if (!c) continue;
+    if (p.status !== 'pending' && p.status !== 'overdue') continue;
+    const owed = standing.get(p.id)?.outstandingCents ?? p.amount;
+    if (owed <= 0) continue;
     if (p.status === 'pending') {
-      pending -= c;
-      if (c >= p.amount) pendingCount -= 1;
-    } else if (p.status === 'overdue') {
-      overdue -= c;
-      if (c >= p.amount) overdueCount -= 1;
+      pending += owed;
+      pendingCount += 1;
+    } else {
+      overdue += owed;
+      overdueCount += 1;
     }
   }
   return {
@@ -268,15 +313,15 @@ export interface StudentRevenue {
 /** Per-student revenue, sorted by total billed descending. */
 export const revenuePerStudent = (
   payments: readonly Payment[],
-  /** Prepaid-credit coverage (see creditCoverageByPayment); covered amounts aren't outstanding. */
-  coverage?: ReadonlyMap<string, Cents>,
+  /** Real standing of unpaid payments (see standingByPayment); only the owed part counts. */
+  standing?: ReadonlyMap<string, PaymentStanding>,
 ): StudentRevenue[] => {
   const map = new Map<string, { paid: number; outstanding: number }>();
   for (const p of payments) {
     if (p.status === 'cancelled') continue;
     const b = map.get(p.studentId) ?? { paid: 0, outstanding: 0 };
     if (p.status === 'paid') b.paid += p.amount;
-    else b.outstanding += p.amount - (coverage?.get(p.id) ?? 0); // pending + overdue, net of credit
+    else b.outstanding += standing?.get(p.id)?.outstandingCents ?? p.amount; // pending + overdue, only what's owed
     map.set(p.studentId, b);
   }
   return [...map.entries()]
