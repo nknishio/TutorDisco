@@ -89,8 +89,13 @@ export interface StudentAccount {
   readonly settlements: ReadonlyMap<string, SessionSettlement>;
 }
 
+/** Oldest first: by date, then start time, then creation (two sessions in one slot). */
 const chronological = (a: Session, b: Session) =>
-  a.date !== b.date ? (a.date < b.date ? -1 : 1) : a.startTime < b.startTime ? -1 : a.startTime > b.startTime ? 1 : 0;
+  a.date !== b.date
+    ? a.date < b.date ? -1 : 1
+    : a.startTime !== b.startTime
+      ? a.startTime < b.startTime ? -1 : 1
+      : (a.createdAt ?? 0) - (b.createdAt ?? 0);
 
 /**
  * A student's running account: money in vs. sessions taught. Answers "has this family
@@ -164,4 +169,17 @@ export const studentAccount = (sessions: readonly Session[], payments: readonly 
     creditSessionCount,
     settlements,
   };
+};
+
+/**
+ * How many more sessions prepaid credit covers at a given default rate and length —
+ * the "when do I ask for more?" number. Null when the default fee is zero.
+ */
+export const sessionsCoveredByCredit = (
+  creditCents: Cents,
+  hourlyRateCents: Cents,
+  durationMinutes: number,
+): number | null => {
+  const fee = expectedPaymentCents(hourlyRateCents, durationMinutes);
+  return fee > 0 ? Math.floor(creditCents / fee) : null;
 };

@@ -32,6 +32,13 @@ export interface PaymentFormModalProps {
   payment?: Payment;
   /** Preselect a student on create (e.g. opened from a student's page). */
   studentId?: StudentId;
+  /**
+   * Record money received in advance: a PAID payment with no session, which becomes
+   * prepaid credit (see `studentAccount`). Hides the session and status fields.
+   */
+  prepayment?: boolean;
+  /** Prefill the amount on create (e.g. the uncovered part of a session). */
+  initialAmountCents?: number;
 }
 
 const NONE = '';
@@ -40,9 +47,17 @@ const statusOptions = PAYMENT_STATUSES.map((s) => ({ label: labelFor(s), value: 
 
 const centsToDollars = (cents: number) => (cents / 100).toFixed(2);
 
-export const PaymentFormModal = ({ visible, onClose, payment, studentId }: PaymentFormModalProps) => {
+export const PaymentFormModal = ({
+  visible,
+  onClose,
+  payment,
+  studentId,
+  prepayment = false,
+  initialAmountCents,
+}: PaymentFormModalProps) => {
   const theme = useTheme();
   const isEdit = Boolean(payment);
+  const isPrepayment = prepayment && !isEdit;
 
   const create = usePaymentsStore((s) => s.create);
   const update = usePaymentsStore((s) => s.update);
@@ -67,12 +82,14 @@ export const PaymentFormModal = ({ visible, onClose, payment, studentId }: Payme
     if (!visible) return;
     setStudent(payment?.studentId ?? studentId ?? NONE);
     setSession(payment?.sessionId ?? NONE);
-    setAmount(payment ? centsToDollars(payment.amount) : '');
-    setStatus(payment?.status ?? 'pending');
+    setAmount(
+      payment ? centsToDollars(payment.amount) : initialAmountCents ? centsToDollars(initialAmountCents) : '',
+    );
+    setStatus(payment?.status ?? (isPrepayment ? 'paid' : 'pending'));
     setReceivedDate(payment?.receivedDate ?? todayIsoDate());
     setFormError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, payment, studentId]);
+  }, [visible, payment, studentId, isPrepayment, initialAmountCents]);
 
   const studentOptions = useMemo(
     () => [
@@ -89,7 +106,8 @@ export const PaymentFormModal = ({ visible, onClose, payment, studentId }: Payme
     const ids = student ? sessionsByStudent[student] ?? [] : [];
     const sessions = ids.map((id) => sessionsById[id]).filter(Boolean);
     return [
-      { label: 'No session (ad-hoc)', value: NONE },
+      // A paid payment with no session is prepaid credit (see studentAccount).
+      { label: 'No session (prepaid credit)', value: NONE },
       ...sessions.map((s) => ({
         label: `${formatIsoDate(s!.date)} · ${formatCents(sessionPaymentCents(s!))}`,
         value: s!.id as string,
@@ -114,6 +132,7 @@ export const PaymentFormModal = ({ visible, onClose, payment, studentId }: Payme
     if (!student) return setFormError('Choose a student.');
     const cents = parseDollarsToCents(amount || '0');
     if (cents == null) return setFormError('Enter a valid amount.');
+    if (isPrepayment && cents <= 0) return setFormError('Enter the amount received.');
     if (status === 'paid' && !isIsoDate(receivedDate)) {
       return setFormError('A paid payment needs a received date (YYYY-MM-DD).');
     }
@@ -136,16 +155,27 @@ export const PaymentFormModal = ({ visible, onClose, payment, studentId }: Payme
     <Modal
       visible={visible}
       onClose={onClose}
-      title={isEdit ? 'Edit payment' : 'New payment'}
+      title={isEdit ? 'Edit payment' : isPrepayment ? 'Record prepayment' : 'New payment'}
       footer={
         <HStack gap={theme.space.md} justify="flex-end">
           <Button label="Cancel" variant="ghost" onPress={onClose} disabled={submitting} />
-          <Button label={isEdit ? 'Save' : 'Create payment'} variant="primary" onPress={onSubmit} loading={submitting} />
+          <Button
+            label={isEdit ? 'Save' : isPrepayment ? 'Record payment' : 'Create payment'}
+            variant="primary"
+            onPress={onSubmit}
+            loading={submitting}
+          />
         </HStack>
       }
     >
       <VStack gap={theme.space.lg}>
         {formError ? <Text color="danger">{formError}</Text> : null}
+        {isPrepayment ? (
+          <Text color="textMuted">
+            Money received in advance becomes credit. It's applied to completed sessions
+            automatically, oldest first.
+          </Text>
+        ) : null}
 
         <Select
           label="Student"
@@ -156,23 +186,27 @@ export const PaymentFormModal = ({ visible, onClose, payment, studentId }: Payme
           disabled={isEdit || studentId != null}
         />
 
-        <Select
-          label="Session"
-          value={session}
-          options={sessionOptions}
-          onChange={onSelectSession}
-          helperText="Pick a session to auto-fill the amount."
-        />
+        {isPrepayment ? null : (
+          <Select
+            label="Session"
+            value={session}
+            options={sessionOptions}
+            onChange={onSelectSession}
+            helperText="Pick a session to auto-fill the amount."
+          />
+        )}
 
         <TextField
-          label="Amount ($)"
+          label={isPrepayment ? 'Amount received ($)' : 'Amount ($)'}
           value={amount}
           onChangeText={setAmount}
           keyboardType="decimal-pad"
           placeholder="0.00"
         />
 
-        <Select label="Status" value={status} options={statusOptions} onChange={setStatus} />
+        {isPrepayment ? null : (
+          <Select label="Status" value={status} options={statusOptions} onChange={setStatus} />
+        )}
 
         {status === 'paid' ? (
           <TextField

@@ -12,8 +12,10 @@
  * time/length/fee, a status pill that doubles as the status picker, assignment
  * previews (collapsible, expanded by default), and ONE next-step button that follows
  * the session's lifecycle: "Mark complete" while scheduled, then "Mark paid" once
- * completed, then nothing once paid. Rarer actions (unmark paid, delete) live in the
- * overflow menu.
+ * completed, then nothing once paid. Prepaid credit (money received in advance) covers
+ * completed sessions oldest first, so a covered session shows "Prepaid" and needs no
+ * step; a partly covered one offers to record the rest. Rarer actions (unmark paid,
+ * delete) live in the overflow menu.
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, View, type GestureResponderEvent } from 'react-native';
@@ -27,6 +29,7 @@ import {
   Pencil,
   Trash2,
   Undo2,
+  Wallet,
 } from 'lucide-react-native';
 import { useTheme } from '../../../shared/theme';
 import { useResponsive } from '../../../shared/responsive';
@@ -53,7 +56,13 @@ import {
 } from '../../../shared/ui';
 import type { Assignment, Payment, Session, SessionStatus, StudentStatus } from '../../../domain/types';
 import { SESSION_STATUSES } from '../../../domain/types';
-import { revenueSummary, sessionPaymentCents, studentAccount } from '../../../domain/services/earnings';
+import {
+  revenueSummary,
+  sessionPaymentCents,
+  sessionsCoveredByCredit,
+  studentAccount,
+  type SessionSettlement,
+} from '../../../domain/services/earnings';
 import { formatCents } from '../../../shared/utils/money';
 import { formatIsoDate, formatIsoTime, formatDuration, todayIsoDate } from '../../../shared/utils/datetime';
 import { labelFor } from '../../../shared/utils/labels';
@@ -61,6 +70,7 @@ import { useAssignmentsStore, usePaymentsStore, useSessionsStore, useStudentsSto
 import type { StudentsScreenProps } from '../../../app/navigation/types';
 import { StudentFormModal } from '../components/StudentFormModal';
 import { SessionFormModal } from '../../sessions/components/SessionFormModal';
+import { PaymentFormModal } from '../../payments/components/PaymentFormModal';
 
 type Props = StudentsScreenProps<'StudentDetail'>;
 
@@ -181,23 +191,29 @@ const SessionHistoryEntry = ({
   isLatest,
   first,
   paid,
+  settlement,
   payingBusy,
   onOpen,
   onChangeStatus,
   onMarkPaid,
   onUnmarkPaid,
+  onRecordPayment,
   onDelete,
 }: {
   session: Session;
   assignments: readonly Assignment[];
   isLatest: boolean;
   first: boolean;
+  /** Has a paid payment of its own. */
   paid: boolean;
+  /** How the session is settled, for completed sessions (see studentAccount). */
+  settlement?: SessionSettlement;
   payingBusy: boolean;
   onOpen: () => void;
   onChangeStatus: (status: SessionStatus) => void;
   onMarkPaid: () => void;
   onUnmarkPaid: () => void;
+  onRecordPayment: (amountCents: number) => void;
   onDelete: () => void;
 }) => {
   const theme = useTheme();
@@ -215,7 +231,10 @@ const SessionHistoryEntry = ({
     { label: 'Delete session', icon: Trash2, destructive: true, onSelect: () => setConfirmDelete(true) },
   ];
 
-  // The one next step for this session, if any.
+  // The one next step for this session, if any. A fully prepaid session needs none; a
+  // partly prepaid one records the rest as more credit (so the math stays exact).
+  const coverage = settlement?.status ?? (paid ? 'paid' : 'unpaid');
+  const due = settlement ? settlement.feeCents - settlement.creditAppliedCents : 0;
   const nextStep =
     session.status === 'scheduled' ? (
       <Button
@@ -225,8 +244,17 @@ const SessionHistoryEntry = ({
         icon={Check}
         onPress={() => onChangeStatus('completed')}
       />
-    ) : session.status === 'completed' && !paid ? (
+    ) : session.status !== 'completed' ? null : coverage === 'unpaid' ? (
       <Button label="Mark paid" size="sm" variant="subtle" icon={CircleDollarSign} onPress={onMarkPaid} loading={payingBusy} />
+    ) : coverage === 'partial' ? (
+      <Button
+        label={`Record ${formatCents(due)}`}
+        accessibilityLabel={`Record the remaining ${formatCents(due)} for this session`}
+        size="sm"
+        variant="subtle"
+        icon={Wallet}
+        onPress={() => onRecordPayment(due)}
+      />
     ) : null;
 
   // The whole entry opens the session. Controls inside it (next-step button, menu,
@@ -285,7 +313,11 @@ const SessionHistoryEntry = ({
               </Pressable>
             )}
           />
-          {paid ? <Badge label="Paid" tone="success" /> : null}
+          {coverage === 'paid' && session.status === 'completed' ? <Badge label="Paid" tone="success" /> : null}
+          {coverage === 'credit' ? <Badge label="Prepaid" tone="success" /> : null}
+          {coverage === 'partial' ? (
+            <Badge label={`Partly prepaid · ${formatCents(due)} due`} tone="warning" />
+          ) : null}
           {isLatest ? (
             <Text variant="eyebrow" color="textSubtle" style={{ marginLeft: theme.space.xs }}>
               Latest
@@ -366,6 +398,7 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
   const [editOpen, setEditOpen] = useState(false);
   const [sessionOpen, setSessionOpen] = useState(false);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [prepay, setPrepay] = useState<{ open: boolean; amountCents?: number }>({ open: false });
 
   useEffect(() => {
     if (!student) void loadStudents();
@@ -399,7 +432,11 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
         .map((id) => sessionsById[id])
         .filter((x): x is Session => Boolean(x))
         .sort((a, b) =>
-          a.date !== b.date ? (a.date < b.date ? 1 : -1) : a.startTime < b.startTime ? 1 : -1,
+          a.date !== b.date
+            ? a.date < b.date ? 1 : -1
+            : a.startTime !== b.startTime
+              ? a.startTime < b.startTime ? 1 : -1
+              : (b.createdAt ?? 0) - (a.createdAt ?? 0), // same slot: newest created first
         ),
     [sessionIds, sessionsById],
   );
@@ -421,7 +458,7 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
 
   const summary = useMemo(() => revenueSummary(sessions), [sessions]);
   // The payments cache can also hold other students' rows (Payments tab), so scope it.
-  const balance = useMemo(
+  const account = useMemo(
     () =>
       studentAccount(
         sessions,
@@ -468,7 +505,10 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
           {student.status !== 'archived' ? (
             <Menu
               accessibilityLabel="Student actions"
-              items={[{ label: 'Archive student', icon: Archive, destructive: true, onSelect: () => void onArchive() }]}
+              items={[
+                { label: 'Record prepayment…', icon: Wallet, onSelect: () => setPrepay({ open: true }) },
+                { label: 'Archive student', icon: Archive, destructive: true, onSelect: () => void onArchive() },
+              ]}
             />
           ) : null}
         </>
@@ -476,19 +516,43 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
     />
   );
 
-  const stats = (
-    // Money first, answering "has this family paid me?", then the teaching record.
-    <StatGroup>
-      <StatCard label="Collected" value={formatCents(balance.collectedCents)} />
+  // One balance tile: what's owed, or — when the family paid ahead — what credit is left
+  // and how many sessions it still covers (the "when do I ask for more?" number).
+  const sessionsLeft = sessionsCoveredByCredit(account.creditCents, student.defaultHourlyRate, student.defaultDuration);
+  const balanceCard =
+    account.owedCents === 0 && account.creditCents > 0 ? (
+      <StatCard
+        label="Credit"
+        value={formatCents(account.creditCents)}
+        hint={
+          sessionsLeft == null
+            ? 'Prepaid'
+            : sessionsLeft === 0
+              ? 'Less than one session left'
+              : `Covers about ${sessionsLeft} more session${sessionsLeft === 1 ? '' : 's'}`
+        }
+      />
+    ) : (
       <StatCard
         label="Owed"
-        value={formatCents(balance.owedCents)}
+        value={formatCents(account.owedCents)}
         hint={
-          balance.owedSessionCount
-            ? `${balance.owedSessionCount} unpaid session${balance.owedSessionCount === 1 ? '' : 's'}`
+          account.owedSessionCount
+            ? `${account.owedSessionCount} unpaid session${account.owedSessionCount === 1 ? '' : 's'}`
             : 'All paid up'
         }
       />
+    );
+
+  const stats = (
+    // Money first, answering "has this family paid me?", then the teaching record.
+    <StatGroup>
+      <StatCard
+        label="Collected"
+        value={formatCents(account.collectedCents)}
+        hint={account.prepaidCents > 0 ? `Includes ${formatCents(account.prepaidCents)} prepaid` : undefined}
+      />
+      {balanceCard}
       <StatCard
         label="Upcoming"
         value={formatCents(summary.scheduledCents)}
@@ -549,6 +613,8 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
               assignments={assignmentsFor[s.id] ?? []}
               isLatest={i === 0}
               paid={Boolean(paidBySession[s.id])}
+              settlement={account.settlements.get(s.id)}
+              onRecordPayment={(amountCents) => setPrepay({ open: true, amountCents })}
               payingBusy={payingId === s.id}
               onOpen={() => navigation.navigate('SessionDetail', { sessionId: s.id, studentId: student.id })}
               onChangeStatus={(status) => void updateSession({ id: s.id, status })}
@@ -579,6 +645,13 @@ export const StudentDetailScreen = ({ route, navigation }: Props) => {
       )}
 
       <StudentFormModal visible={editOpen} onClose={() => setEditOpen(false)} student={student} />
+      <PaymentFormModal
+        visible={prepay.open}
+        onClose={() => setPrepay({ open: false })}
+        studentId={student.id}
+        prepayment
+        initialAmountCents={prepay.amountCents}
+      />
       <SessionFormModal
         visible={sessionOpen}
         onClose={() => setSessionOpen(false)}
